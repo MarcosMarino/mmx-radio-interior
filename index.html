@@ -630,7 +630,8 @@ function ArgMap({activeRegion,campaign,viewed,onPlaza,mode}){
 
 // Export functions
 function exportAgency(campaign,tot,demo){
-  const wb=XLSX.utils.book_new();
+  const X=window.XLSX;if(!X){alert("Librería no disponible");return null;}
+  const wb=X.utils.book_new();
   const rows=[
     ['MMX RADIO INTERIOR 2026 — PLANIFICACIÓN DE CAMPAÑA'],[''],
     ['RESUMEN EJECUTIVO'],
@@ -661,14 +662,15 @@ function exportAgency(campaign,tot,demo){
   });
   rows.push(['','','','TOTAL CAMPAÑA','','','','','','','',
     '',tot.avisos,'',Math.round(tot.inv)]);
-  const ws=XLSX.utils.aoa_to_sheet(rows);
+  const ws=X.utils.aoa_to_sheet(rows);
   ws['!cols']=[{wch:20},{wch:14},{wch:12},{wch:28},{wch:8},{wch:5},{wch:12},{wch:12},{wch:10},{wch:10},{wch:14},{wch:12},{wch:12},{wch:18},{wch:20}];
-  XLSX.utils.book_append_sheet(wb,'Planificación',ws);
+  X.utils.book_append_sheet(wb,'Planificación',ws);
   return wb;
 }
 
 function exportOP(campaign,tot,opData){
-  const wb=XLSX.utils.book_new();
+  const X=window.XLSX;if(!X){alert("Librería no disponible");return null;}
+  const wb=X.utils.book_new();
   const today=new Date().toLocaleDateString('es-AR');
   const opNum='OP-'+Date.now().toString().slice(-6);
   const rows=[
@@ -708,24 +710,25 @@ function exportOP(campaign,tot,opData){
   rows.push(['']);
   rows.push(['Moneda: PESO ARGENTINO']);
   rows.push(['Condiciones Generales: sujeto a disponibilidad de pauta. Tarifas con -20% de descuento sobre tarifa de lista.']);
-  const ws=XLSX.utils.aoa_to_sheet(rows);
+  const ws=X.utils.aoa_to_sheet(rows);
   ws['!cols']=[{wch:28},{wch:14},{wch:14},{wch:10},{wch:22},{wch:8},{wch:12},{wch:12},{wch:20},{wch:8},{wch:20},{wch:20}];
-  XLSX.utils.book_append_sheet(wb,'Orden de Publicidad',ws);
+  X.utils.book_append_sheet(wb,'Orden de Publicidad',ws);
   return wb;
 }
 
 function downloadWB(wb,name){
+  const X=window.XLSX;
+  if(!X){alert('La librería Excel no está disponible.\nRecargá la página con conexión a internet e intentá de nuevo.');return;}
   try{
-    if(typeof XLSX==='undefined')throw new Error('Librería Excel no cargada — verificá tu conexión');
-    const b64=XLSX.write(wb,{bookType:'xlsx',type:'base64'});
-    const a=document.createElement('a');
-    a.href='data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,'+b64;
-    a.download=name;
-    a.style.display='none';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(()=>document.body.removeChild(a),200);
-  }catch(e){alert('Error al exportar: '+e.message);}
+    const b64=X.write(wb,{bookType:'xlsx',type:'base64'});
+    const link=document.createElement('a');
+    link.setAttribute('href','data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,'+b64);
+    link.setAttribute('download',name);
+    link.style.visibility='hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }catch(e){alert('Error al generar el archivo: '+e.message);}
 }
 
 // ── MAIN APP ────────────────────────────────────────────────────────────────
@@ -1219,10 +1222,10 @@ function App(){
                 </div>
 
                 <div className="export-section">
-                  <button className="btn-exp agency" onClick={()=>downloadWB(exportAgency(campaign,tot,demo),'MMX_Planificacion_Interior_2026.xlsx')}>
+                  <button className="btn-exp agency" onClick={()=>{try{const wb=exportAgency(campaign,tot,demo);if(wb)downloadWB(wb,'MMX_Planificacion_Interior_2026.xlsx');}catch(e){alert('Error: '+e.message);}}}>
                     📊 Planificación detallada (Agencias)
                   </button>
-                  <button className="btn-exp pyme" onClick={()=>downloadWB(exportOP(campaign,tot,opData),'MMX_Orden_de_Publicidad.xlsx')}>
+                  <button className="btn-exp pyme" onClick={()=>{try{const wb=exportOP(campaign,tot,opData);if(wb)downloadWB(wb,'MMX_Orden_de_Publicidad.xlsx');}catch(e){alert('Error: '+e.message);}}}>
                     📋 Orden de Publicidad (Pymes)
                   </button>
                 </div>
