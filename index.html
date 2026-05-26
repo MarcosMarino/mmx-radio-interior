@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>MMX · Radio Interior Argentina 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#09100F;--ink2:#4A5568;--ink3:#A0ADB8;
+  --bg:#F2EFE7;--surf:#FFFFFF;--bdr:#E4DDD2;
+  --map:#040E1B;--mapf:#0A1F38;--maps:#1A4F88;
+  --blue:#0D4FA8;--green:#047857;--amber:#B45309;--red:#B01C1C;
+  --gbg:#DCFCE7;--abg:#FEF9C3;--rbg:#FEE2E2;
+  --noa:#0A7A68;--noa2:#D0F0EA;
+  --nea:#1A7830;--nea2:#D0F0D8;
+  --cuyo:#8A3018;--cuyo2:#F8E0D8;
+  --centro:#876000;--centro2:#FDF0C0;
+  --pat:#14508A;--pat2:#D0E4F8;
+  --fd:'Cormorant Garamond',Georgia,serif;
+  --fu:'Plus Jakarta Sans',system-ui,sans-serif;
+}
+html,body{height:100%;overflow:hidden;font-family:var(--fu);background:var(--bg);color:var(--ink);font-size:13px}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:2px}
+button{font-family:var(--fu);cursor:pointer;border:none;outline:none;transition:all .18s}
+input,textarea{font-family:var(--fu)}
+.app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+
+/* NAV */
+.top-nav{display:flex;align-items:center;background:var(--surf);border-bottom:1px solid var(--bdr);padding:0 20px;height:48px;flex-shrink:0;gap:0;z-index:100}
+.nav-logo{font-family:var(--fd);font-size:20px;font-weight:700;letter-spacing:-.02em;color:var(--ink);margin-right:24px}
+.nav-logo span{color:var(--blue)}
+.nav-step{display:flex;align-items:center;gap:6px;padding:0 14px;height:100%;font-size:12px;font-weight:600;color:var(--ink3);border-bottom:2px solid transparent;cursor:pointer;transition:all .18s;white-space:nowrap}
+.nav-step.active{color:var(--blue);border-color:var(--blue)}
+.nav-step.done{color:var(--green);border-color:transparent}
+.nav-step .step-n{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;background:var(--bdr);color:var(--ink3)}
+.nav-step.active .step-n{background:var(--blue);color:#fff}
+.nav-step.done .step-n{background:var(--green);color:#fff}
+.nav-sep{width:1px;height:20px;background:var(--bdr)}
+.nav-right{margin-left:auto;display:flex;gap:8px}
+
+/* SCREEN */
+.screen{flex:1;overflow:hidden;display:none}
+.screen.on{display:flex}
+
+/* ===================== PANORAMA ===================== */
+.panorama{width:100%;display:flex}
+.pan-left{width:52%;background:var(--map);display:flex;flex-direction:column;justify-content:center;padding:32px 40px;position:relative;overflow:hidden}
+.pan-left::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 20% 50%,rgba(14,79,168,.25) 0%,transparent 60%);pointer-events:none}
+.pan-eyebrow{font-size:10px;letter-spacing:.16em;color:#3A6A9A;font-weight:700;text-transform:uppercase;margin-bottom:16px}
+.pan-title{font-family:var(--fd);font-size:48px;line-height:1.08;color:#ECF1F8;font-weight:400;margin-bottom:8px}
+.pan-title em{font-style:italic;color:#7FB8F0}
+.pan-sub{font-size:13px;color:#4A6A8A;margin-bottom:28px;line-height:1.6}
+.pan-kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:28px}
+.pan-kpi{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:14px 16px}
+.pan-kpi-n{font-family:var(--fd);font-size:36px;font-weight:700;color:#ECF1F8;line-height:1}
+.pan-kpi-n.blue{color:#60A5FA}
+.pan-kpi-n.green{color:#34D399}
+.pan-kpi-l{font-size:11px;color:#5A7A9A;margin-top:4px;line-height:1.4}
+.pan-kpi-cmp{font-size:10px;color:#3A5A7A;margin-top:2px;font-style:italic}
+.pan-kpi.featured{background:rgba(14,79,168,.15);border-color:rgba(96,165,250,.3)}
+.btn-cta{display:inline-flex;align-items:center;gap:8px;padding:12px 24px;background:var(--blue);color:#fff;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer}
+.btn-cta:hover{background:#0A41A0}
+.btn-cta svg{transition:transform .2s}
+.btn-cta:hover svg{transform:translateX(3px)}
+.pan-right{flex:1;background:var(--map);display:flex;flex-direction:column;border-left:1px solid rgba(255,255,255,.06);overflow:hidden}
+.pan-map-header{padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.06)}
+.pan-map-title{font-size:11px;font-weight:700;color:#4A6A8A;text-transform:uppercase;letter-spacing:.08em}
+.region-chips{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.r-chip{padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid;transition:all .18s;white-space:nowrap}
+.pan-map-svg{flex:1;overflow:hidden;padding:6px 10px 6px}
+
+/* ===================== CONSTRUCTOR ===================== */
+.constructor{width:100%;display:flex;flex-direction:column;overflow:hidden}
+.con-toolbar{background:var(--surf);border-bottom:1px solid var(--bdr);padding:8px 16px;display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap}
+.con-toolbar-label{font-size:10px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+.r-chip-con{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid;transition:all .18s;white-space:nowrap}
+.con-body{flex:1;display:flex;overflow:hidden}
+.con-map{width:38%;border-right:1px solid var(--bdr);display:flex;flex-direction:column;overflow:hidden;background:#fff}
+.con-map-svg{flex:1;overflow:hidden;padding:6px}
+.con-detail{flex:1;display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--bdr)}
+.con-radios{flex:1;overflow-y:auto;padding-bottom:72px}
+.con-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--ink3);gap:10px;text-align:center;padding:20px}
+.con-campaign{width:260px;flex-shrink:0;background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
+
+/* PLAZA header */
+.pl-hd{padding:14px 16px 12px;background:var(--surf);border-bottom:1px solid var(--bdr);flex-shrink:0}
+.pl-name{font-family:var(--fd);font-size:24px;font-weight:600;letter-spacing:-.01em}
+.pl-meta{font-size:11px;color:var(--ink3);margin-top:3px}
+.pl-badge{display:inline-block;font-size:9px;font-weight:700;padding:2px 9px;border-radius:20px;margin-top:6px}
+.m4{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
+.mc{background:var(--bg);border-radius:7px;padding:8px 10px}
+.mc-l{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);font-weight:700}
+.mc-v{font-family:var(--fd);font-size:19px;font-weight:600;margin-top:3px;line-height:1}
+.cpm-bar{display:flex;align-items:center;gap:8px;margin-top:10px}
+.cpm-bar-track{flex:1;height:3px;background:var(--bdr);border-radius:2px;overflow:hidden}
+.cpm-bar-fill{height:100%;border-radius:2px;transition:width .4s}
+.cpm-badge{font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap}
+
+/* RADIO CARD */
+.r-sec-lbl{padding:8px 16px 4px;font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink3);font-weight:700;background:var(--bg);border-bottom:1px solid var(--bdr)}
+.rcard{display:flex;align-items:flex-start;gap:10px;padding:11px 14px;cursor:pointer;border-bottom:1px solid #F0EDE8;transition:all .12s}
+.rcard:hover{background:#FAFAF8}
+.rcard.on{background:#FAFCFF}
+.rcard.off{opacity:.45}
+.rchk{width:19px;height:19px;border-radius:5px;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;transition:all .15s;border:2px solid var(--bdr)}
+.rchk.on{background:var(--blue);border-color:var(--blue)}
+.rbody{flex:1;min-width:0}
+.rname{font-size:13px;font-weight:700;color:var(--ink)}
+.rtags{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}
+.rtag{font-size:9.5px;padding:2px 7px;border-radius:4px;font-weight:600}
+.tag-am{background:#FEF9E7;color:#92610A}
+.tag-fm{background:#EFF6FF;color:#1E40AF}
+.tag-g{background:#F0EDE8;color:#6B6157}
+.rstats{display:flex;gap:12px;margin-top:7px}
+.rstat{font-size:11px;color:var(--ink2)}
+.rstat strong{color:var(--ink);font-weight:600}
+.rprice{text-align:right;flex-shrink:0}
+.rprice-main{font-family:var(--fd);font-size:18px;font-weight:600;line-height:1}
+.rprice-sub{font-size:9.5px;color:var(--ink3);margin-top:1px}
+
+/* ACTIONS */
+.pl-actions{position:sticky;bottom:0;padding:10px 14px;background:var(--surf);border-top:1px solid var(--bdr);display:flex;gap:7px}
+.btn-add{flex:1;padding:10px;background:var(--blue);color:#fff;border-radius:8px;font-size:13px;font-weight:700}
+.btn-add:hover{background:#0A41A0}
+.btn-add:disabled{background:var(--bdr);color:var(--ink3)}
+.btn-rm{padding:10px 12px;background:#FEF2F2;color:var(--red);border:1.5px solid #FECACA;border-radius:8px;font-size:12px;font-weight:600}
+
+/* CAMPAIGN PANEL */
+.camp-head{padding:12px 14px;border-bottom:1px solid var(--bdr);background:var(--surf);flex-shrink:0}
+.camp-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink3)}
+.camp-totals{padding:10px 12px;border-bottom:1px solid var(--bdr)}
+.ct-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+.ct-l{font-size:10px;color:var(--ink3)}
+.ct-v{font-family:var(--fd);font-size:16px;font-weight:600}
+.camp-plazas{flex:1;overflow-y:auto;padding:6px 0}
+.cp-item{padding:8px 12px;border-bottom:1px solid #F0EDE8;cursor:pointer}
+.cp-item:hover{background:#FAFAF8}
+.cp-item.active{background:#F0F7FF}
+.cp-name{font-size:12px;font-weight:700}
+.cp-sub{font-size:10px;color:var(--ink3);margin-top:2px}
+
+/* DEMOG SECTION */
+.demo-sec{padding:10px 12px;border-top:1px solid var(--bdr)}
+.demo-title{font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink3);font-weight:700;margin-bottom:8px}
+.demo-bar-row{margin-bottom:5px}
+.demo-bar-top{display:flex;justify-content:space-between;font-size:9.5px;color:var(--ink2);margin-bottom:2px}
+.demo-track{height:4px;background:var(--bdr);border-radius:2px;overflow:hidden}
+.demo-fill{height:100%;border-radius:2px;transition:width .4s}
+
+/* ===================== PROPUESTA ===================== */
+.propuesta{width:100%;display:flex;flex-direction:column;overflow:hidden}
+.prop-header{background:var(--surf);border-bottom:1px solid var(--bdr);padding:14px 20px;flex-shrink:0}
+.prop-title{font-family:var(--fd);font-size:26px;font-weight:600}
+.prop-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:14px}
+.pk{background:var(--bg);border-radius:8px;padding:10px 12px}
+.pk-l{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);font-weight:700}
+.pk-v{font-family:var(--fd);font-size:20px;font-weight:600;margin-top:3px}
+.prop-body{flex:1;display:flex;overflow:hidden}
+.prop-left{width:42%;border-right:1px solid var(--bdr);display:flex;flex-direction:column;overflow:hidden;background:#fff}
+.prop-map{flex:1;overflow:hidden;padding:8px}
+.prop-right{flex:1;overflow-y:auto;padding:16px}
+
+/* DEMO CHARTS */
+.demo-card{background:var(--surf);border-radius:10px;border:1px solid var(--bdr);padding:14px 16px;margin-bottom:12px}
+.demo-card-title{font-size:11px;font-weight:700;color:var(--ink2);margin-bottom:12px}
+.demo-h-bar{display:flex;align-items:center;gap:10px;margin-bottom:7px}
+.demo-h-lbl{font-size:11px;color:var(--ink2);width:80px;flex-shrink:0}
+.demo-h-track{flex:1;height:8px;background:var(--bg);border-radius:4px;overflow:hidden}
+.demo-h-fill{height:100%;border-radius:4px;transition:width .5s}
+.demo-h-pct{font-size:11px;font-weight:600;color:var(--ink);width:36px;text-align:right;flex-shrink:0}
+
+/* PROP PLAZAS */
+.prop-plaza-row{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--bg);border-radius:7px;margin-bottom:6px}
+.pp-name{font-size:12px;font-weight:700}
+.pp-meta{font-size:10px;color:var(--ink3);margin-top:1px}
+
+/* OP FORM */
+.op-form{background:var(--surf);border-radius:10px;border:1px solid var(--bdr);padding:14px 16px;margin-top:14px}
+.op-form-title{font-size:11px;font-weight:700;color:var(--ink2);margin-bottom:10px}
+.op-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.op-field{display:flex;flex-direction:column;gap:3px}
+.op-label{font-size:9.5px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.04em}
+.op-input{padding:6px 10px;border:1px solid var(--bdr);border-radius:6px;font-size:12px;color:var(--ink);background:var(--bg);outline:none}
+.op-input:focus{border-color:var(--blue)}
+
+/* EXPORT BUTTONS */
+.export-section{display:flex;gap:10px;margin-top:14px}
+.btn-exp{flex:1;padding:11px 14px;border-radius:8px;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}
+.btn-exp.agency{background:var(--ink);color:#fff}
+.btn-exp.agency:hover{background:#333}
+.btn-exp.pyme{background:var(--green);color:#fff}
+.btn-exp.pyme:hover{background:#036648}
+.btn-exp:disabled{background:var(--bdr);color:var(--ink3);cursor:default}
+
+/* UTILS */
+.cc-ok{color:#047857}.cc-mid{color:#B45309}.cc-bad{color:#B01C1C}
+.cc-ok-bg{background:#DCFCE7;color:#065F46}
+.cc-mid-bg{background:#FEF9C3;color:#7A4A00}
+.cc-bad-bg{background:#FEE2E2;color:#7F1D1D}
+
+.map-loading{display:flex;align-items:center;justify-content:center;height:100%;color:#4A6A8A;font-size:12px;gap:8px;flex-direction:column}
+.map-loading-dot{width:6px;height:6px;border-radius:50%;background:#4A6A8A;animation:blink 1.2s ease-in-out infinite}
+.map-loading-dot:nth-child(2){animation-delay:.2s}
+.map-loading-dot:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}
+
+.fund-screen{width:100%;display:flex;flex-direction:column;overflow-y:auto;background:var(--bg)}
+.fund-hero{background:var(--map);padding:24px 28px 20px;flex-shrink:0}
+.fund-hero-eyebrow{font-size:10px;font-weight:700;color:var(--noa);text-transform:uppercase;letter-spacing:.12em;margin-bottom:10px}
+.fund-hero-title{font-family:var(--fd);font-size:30px;color:#ECF1F8;font-weight:400;line-height:1.2;margin-bottom:8px}
+.fund-hero-sub{font-size:13px;color:#4A6A8A;line-height:1.6}
+.fund-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:18px 20px;flex:1}
+.fund-card{background:var(--surf);border-radius:12px;border:1px solid var(--bdr);overflow:hidden;display:flex;flex-direction:column}
+.fund-card-top{padding:16px 18px 14px;flex:1}
+.fund-card-icon{font-size:28px;margin-bottom:10px;line-height:1}
+.fund-card-title{font-family:var(--fd);font-size:22px;font-weight:600;color:var(--t1);margin-bottom:8px;line-height:1.2}
+.fund-card-sub{font-size:12px;color:var(--t2);margin-bottom:12px;font-style:italic}
+.fund-card-bullets{list-style:none;display:flex;flex-direction:column;gap:7px}
+.fund-card-bullets li{font-size:12px;color:var(--t1);line-height:1.5;padding-left:14px;position:relative}
+.fund-card-bullets li::before{content:'';position:absolute;left:0;top:7px;width:6px;height:6px;border-radius:50%;flex-shrink:0;background:#0D4FA8}
+.fund-card-foot{padding:8px 18px 10px;border-top:1px solid var(--bdr);background:var(--bg)}
+.fund-card-source{font-size:9.5px;color:var(--t3);font-style:italic;line-height:1.4}
+.fund-dl-banner{margin:0 20px 20px;background:var(--map);border-radius:10px;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.fund-dl-text{font-size:12px;color:#7A9AB8;flex:1}
+.fund-dl-text strong{color:#ECF1F8;display:block;margin-bottom:2px;font-size:13px}
+.fund-dl-btn{padding:9px 18px;background:var(--noa);color:#fff;border-radius:8px;font-size:12px;font-weight:700;white-space:nowrap;cursor:pointer;border:none;font-family:var(--fu)}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const{useState,useMemo,useEffect,useRef,useCallback}=React;
+const D=0.80,B=7.79;
+
+const REGIONS={
+  NOA:{col:'#0A7A68',bg:'rgba(10,122,104,.12)',chip:'rgba(10,122,104,.18)',txt:'#0A7A68',label:'NOA',plazas:['Jujuy','Salta','Tucumán','Santiago del Estero','La Rioja','Catamarca'],
+  provs:[{n:'Jujuy',city:'San Salvador de Jujuy'},{n:'Salta',city:'Salta Capital'},{n:'Tucumán',city:'Gran Tucumán'},{n:'Santiago del Estero',city:'Santiago del Estero Cap.'},{n:'La Rioja',city:'La Rioja Capital'},{n:'Catamarca',city:'San Fernando del Valle'}]},
+  NEA:{col:'#1A7830',bg:'rgba(26,120,48,.12)',chip:'rgba(26,120,48,.18)',txt:'#1A7830',label:'NEA',plazas:['Formosa','Resistencia','Corrientes','Posadas'],
+  provs:[{n:'Formosa',city:'Formosa Capital'},{n:'Chaco',city:'Resistencia'},{n:'Corrientes',city:'Corrientes Capital'},{n:'Misiones',city:'Posadas'}]},
+  Cuyo:{col:'#8A3018',bg:'rgba(138,48,24,.12)',chip:'rgba(138,48,24,.18)',txt:'#8A3018',label:'Cuyo',plazas:['Mendoza','San Juan','San Luis'],
+  provs:[{n:'Mendoza',city:'Gran Mendoza'},{n:'San Juan',city:'Gran San Juan'},{n:'San Luis',city:'San Luis Capital'}]},
+  Centro:{col:'#876000',bg:'rgba(135,96,0,.12)',chip:'rgba(135,96,0,.18)',txt:'#876000',label:'Centro',plazas:['Córdoba','Rosario','Santa Fe','Paraná','La Plata','Mar del Plata','Bahía Blanca','Santa Rosa'],
+  provs:[{n:'Córdoba',city:'Gran Córdoba'},{n:'Santa Fe',city:'Rosario + Santa Fe'},{n:'Entre Ríos',city:'Paraná'},{n:'Buenos Aires',city:'La Plata · Mar del Plata · Bahía Blanca'},{n:'La Pampa',city:'Santa Rosa'}]},
+  Patagonia:{col:'#145090',bg:'rgba(20,80,144,.12)',chip:'rgba(20,80,144,.18)',txt:'#145090',label:'Patagonia',plazas:['Neuquén','Bariloche','Comodoro Rivadavia','Trelew','Río Gallegos','Ushuaia'],
+  provs:[{n:'Neuquén',city:'Neuquén Capital'},{n:'Río Negro',city:'Bariloche'},{n:'Chubut',city:'Comodoro Rivadavia · Trelew'},{n:'Santa Cruz',city:'Río Gallegos'},{n:'Tierra del Fuego',city:'Ushuaia'}]}
+};
+
+const PL=[
+{n:'Córdoba',r:'Centro',p:1600000,c:.500,u:800045,x:124,y:152,rs:[
+{n:'AM 580 Radio Universidad',k:3,rch:.183,pf:'Informativa',ns:'Medio',ed:'30-60',cp:2.76,i:1551514},
+{n:'FM 96.5 Suquia',k:4,rch:.160,pf:'Informativa',ns:'Medio',ed:'30-60',cp:3.47,i:1704960},
+{n:'FM 98.5 Orfeo',k:10,rch:.080,pf:'Musical',ns:'Medio/Bajo',ed:'30-60',cp:6.07,i:1491840},
+{n:'FM 96.1 Shopping Classics',k:6,rch:.208,pf:'Musical',ns:'Medio',ed:'30-60',cp:6.51,i:4162873}]},
+{n:'Rosario',r:'Centro',p:1400000,c:.683,u:956194,x:175,y:172,rs:[
+{n:'AM 1230 LT2',k:1,rch:.285,pf:'Informativa',ns:'Medio',ed:'30-60',cp:10.88,i:8332992},
+{n:'FM 103.3 Universidad',k:2,rch:.218,pf:'Informativa',ns:'Medio',ed:'30-60',cp:1.36,i:797069},
+{n:'FM 96.5 Radio Mitre',k:3,rch:.174,pf:'Informativa',ns:'Medio',ed:'30-60',cp:3.42,i:1598400},
+{n:'FM 97.9 Vida',k:4,rch:.167,pf:'Musical',ns:'Medio',ed:'18-45',cp:13.10,i:5882112},
+{n:'FM 93.1 Frecuencia+',k:5,rch:.176,pf:'Musical',ns:'Medio',ed:'30-60',cp:7.46,i:3529267}]},
+{n:'Mendoza',r:'Cuyo',p:1100000,c:.421,u:462992,x:62,y:165,rs:[
+{n:'FM 100.9 Estación del Sol',k:1,rch:.258,pf:'Musical',ns:'Medio',ed:'30-60',cp:3.52,i:1920000},
+{n:'AM 720 LV10',k:5,rch:.088,pf:'Informativa',ns:'Medio',ed:'30-60',cp:5.17,i:960000},
+{n:'FM 102.7 La Coope',k:10,rch:.081,pf:'Musical',ns:'Medio',ed:'30-60',cp:10.71,i:1832832},
+{n:'FM 105.5 MDZ',k:12,rch:.041,pf:'Informativa',ns:'Medio',ed:'30-60',cp:11.30,i:978221},
+{n:'FM 102.1 Andes Latina',k:16,rch:.029,pf:'Musical',ns:'Medio',ed:'30-60',cp:9.74,i:596736}]},
+{n:'Jujuy',r:'NOA',p:300000,c:.589,u:176767,x:108,y:34,rs:[
+{n:'FM 107.1 Radio City',k:1,rch:.230,pf:'Informativa',ns:'Medio',ed:'18-60',cp:19.07,i:2523341},
+{n:'FM 106.3 Radio Mitre',k:3,rch:.209,pf:'Informativa',ns:'Medio/Alto',ed:'30-60',cp:20.91,i:2523341},
+{n:'FM 105.5 Radio 2',k:5,rch:.189,pf:'Informativa',ns:'Medio',ed:'30-60',cp:17.60,i:1918080},
+{n:'FM 91.7 Radio Fiesta',k:7,rch:.095,pf:'Musical',ns:'Medio',ed:'18-60',cp:46.31,i:2523341},
+{n:'FM 88.1 Ciudad',k:8,rch:.081,pf:'Musical',ns:'Medio/Alto',ed:'30-60',cp:41.07,i:1918080}]},
+{n:'Santa Fe',r:'Centro',p:600000,c:.659,u:395348,x:178,y:150,rs:[
+{n:'FM 91.1 Aire',k:1,rch:.279,pf:'Informativa',ns:'Medio',ed:'30-60',cp:21.22,i:6819840},
+{n:'AM 1020 LT10',k:2,rch:.246,pf:'Informativa',ns:'Medio',ed:'30-60',cp:7.16,i:2028902},
+{n:'FM 91.5 Sol Sport',k:4,rch:.177,pf:'Informativa',ns:'Medio',ed:'18-45',cp:4.44,i:905760},
+{n:'FM 94.1 Onda Horizonte',k:5,rch:.165,pf:'Musical',ns:'Medio',ed:'30-60',cp:6.28,i:1193472},
+{n:'FM 107.9 Vida',k:8,rch:.087,pf:'Musical',ns:'Medio/Alto',ed:'30-60',cp:10.21,i:1022976}]},
+{n:'Salta',r:'NOA',p:730000,c:.628,u:458102,x:107,y:45,rs:[
+{n:'FM 107.9 La Estación',k:1,rch:.182,pf:'Musical',ns:'Medio',ed:'18-45',cp:3.01,i:767232},
+{n:'FM 91.1 Aries',k:2,rch:.184,pf:'Informativa',ns:'Medio',ed:'30-60',cp:1.45,i:373173},
+{n:'AM 840 Radio Salta',k:3,rch:.151,pf:'Informativa',ns:'Medio',ed:'30-60',cp:1.72,i:364861},
+{n:'FM 93.3 Radio Mitre',k:4,rch:.130,pf:'Informativa',ns:'Medio/Alto',ed:'30-60',cp:4.42,i:805594},
+{n:'FM 98.3 La Red',k:5,rch:.139,pf:'Informativa',ns:'Medio',ed:'30-60',cp:1.33,i:259154},
+{n:'FM 89.9 Profesional',k:6,rch:.123,pf:'Informativa',ns:'Medio',ed:'30-60',cp:3.15,i:543456}]},
+{n:'Tucumán',r:'NOA',p:1060000,c:.563,u:596685,x:112,y:76,rs:[
+{n:'FM 99.5 Radio Mitre',k:1,rch:.175,pf:'Informativa',ns:'Medio',ed:'30-60',cp:0.96,i:343123},
+{n:'FM 95.5 La 100',k:2,rch:.189,pf:'Musical',ns:'Medio/Alto',ed:'30-60',cp:0.85,i:325221},
+{n:'FM 95.1 Sensaciones',k:3,rch:.172,pf:'Musical',ns:'Medio',ed:'30-60',cp:2.19,i:767232},
+{n:'FM 92.3 La Red',k:5,rch:.096,pf:'Informativa',ns:'Medio/Alto',ed:'30-60',cp:1.53,i:298368},
+{n:'AM 930 LV7',k:6,rch:.127,pf:'Informativa',ns:'Medio/Bajo',ed:'18-45',cp:2.47,i:639360}]},
+{n:'Santiago del Estero',r:'NOA',p:420000,c:.513,u:215616,x:122,y:93,rs:[
+{n:'FM 100.1 Panorama',k:1,rch:.320,pf:'Informativa',ns:'Medio/Bajo',ed:'30-60',cp:2.19,i:566047},
+{n:'AM 890 LV11',k:2,rch:.110,pf:'Informativa',ns:'Medio/Bajo',ed:'30-60',cp:2.70,i:239121},
+{n:'FM 95.3 Radio de la Mujer',k:3,rch:.080,pf:'Musical',ns:'Medio/Bajo',ed:'30-60',cp:7.40,i:477389},
+{n:'FM 88.5 Los 40 Principales',k:6,rch:.080,pf:'Musical',ns:'Medio',ed:'18-45',cp:6.94,i:447552},
+{n:'FM 101.3 Capital',k:8,rch:.050,pf:'Informativa',ns:'Medio',ed:'30-60',cp:14.04,i:566047}]},
+{n:'La Rioja',r:'NOA',p:225000,c:.747,u:168174,x:88,y:118,rs:[
+{n:'FM 95.1 Fenix',k:1,rch:.510,pf:'Informativa',ns:'Medio/Bajo',ed:'18-60',cp:7.74,i:1704960},
+{n:'FM 104.1 Cadena 3',k:2,rch:.208,pf:'Informativa',ns:'Medio',ed:'30-60',cp:21.35,i:1918080},
+{n:'FM 91.9 Radio Provincia',k:3,rch:.149,pf:'Informativa',ns:'Medio',ed:'30-60',cp:69.97,i:4503652},
+{n:'FM 88.3 La Red',k:4,rch:.129,pf:'Informativa',ns:'Medio',ed:'30-60',cp:34.42,i:1918080},
+{n:'FM 90.3 Power Hit',k:6,rch:.122,pf:'Musical',ns:'Medio',ed:'30-60',cp:5.18,i:272794}]},
+{n:'Catamarca',r:'NOA',p:200000,c:.685,u:136937,x:101,y:104,rs:[
+{n:'FM 104.1 Valle Viejo',k:1,rch:.522,pf:'Informativa',ns:'Medio/Bajo',ed:'30-60',cp:5.10,i:1022976},
+{n:'FM 98.5 Ancasti',k:2,rch:.175,pf:'Informativa',ns:'Medio',ed:'30-60',cp:2.47,i:166234},
+{n:'FM 99.1 Vale',k:3,rch:.088,pf:'Musical',ns:'Medio/Bajo',ed:'18-60',cp:11.40,i:384000},
+{n:'FM 107.9 La Isla',k:4,rch:.083,pf:'Musical',ns:'Medio',ed:'18-45',cp:17.98,i:575424},
+{n:'FM 92.9 Soft',k:8,rch:.044,pf:'Informativa',ns:'Medio',ed:'30-60',cp:12.65,i:213120}]},
+{n:'Resistencia',r:'NEA',p:450000,c:.628,u:282443,x:206,y:88,rs:[
+{n:'FM 90.7 Radio Mitre',k:1,rch:.237,pf:'Informativa',ns:'Medio',ed:'18-60',cp:3.27,i:670262},
+{n:'FM 94.7 Natagalá',k:2,rch:.186,pf:'Informativa',ns:'Medio/Alto',ed:'30-60',cp:1.06,i:170496},
+{n:'FM 89.5 La Rocka',k:3,rch:.165,pf:'Musical',ns:'Medio/Alto',ed:'18-60',cp:2.30,i:328205},
+{n:'FM 104.7 La Radio',k:4,rch:.136,pf:'Informativa',ns:'Medio',ed:'30-60',cp:4.57,i:537062},
+{n:'FM 88.5 La 100',k:6,rch:.169,pf:'Musical',ns:'Medio',ed:'18-60',cp:5.48,i:800692}]},
+{n:'Corrientes',r:'NEA',p:410000,c:.780,u:319739,x:218,y:93,rs:[
+{n:'FM 100.3 Sudamericana',k:1,rch:.398,pf:'Informativa',ns:'Medio/Bajo',ed:'30-60',cp:2.37,i:742936},
+{n:'FM 99.3 Radio Dos',k:2,rch:.398,pf:'Informativa',ns:'Medio/Bajo',ed:'18-45',cp:0.60,i:187972},
+{n:'FM 97.3 Continental',k:4,rch:.178,pf:'Informativa',ns:'Medio/Bajo',ed:'30-60',cp:1.43,i:499500},
+{n:'FM 107.7 Xpress',k:5,rch:.153,pf:'Musical',ns:'Medio/Bajo',ed:'18-60',cp:8.84,i:1061338},
+{n:'FM 90.9 Positiva',k:6,rch:.127,pf:'Informativa',ns:'Medio/Bajo',ed:'30-60',cp:10.61,i:1061338}]},
+{n:'Posadas',r:'NEA',p:370000,c:.425,u:157218,x:246,y:86,rs:[
+{n:'FM 98.1 Show',k:2,rch:.166,pf:'Informativa',ns:'Medio',ed:'30-60',cp:4.22,i:1554000},
+{n:'FM 99.9 República',k:3,rch:.149,pf:'Informativa',ns:'Medio',ed:'30-60',cp:12.12,i:1278720},
+{n:'FM 105.9 Tumpambaé',k:4,rch:.120,pf:'Musical',ns:'Medio/Bajo',ed:'18-60',cp:2.60,i:221645},
+{n:'FM 95.3 Cielo',k:7,rch:.080,pf:'Musical',ns:'Medio/Bajo',ed:'18-60',cp:9.45,i:537062}]},
+{n:'Formosa',r:'NEA',p:280000,c:.569,u:159316,x:220,y:68,rs:[
+{n:'FM 99.9 Radio Uno',k:1,rch:.313,pf:'Informativa',ns:'Medio',ed:'18-60',cp:3.24,i:545587},
+{n:'FM 98.9 La 100',k:2,rch:.136,pf:'Musical',ns:'Medio',ed:'18-45',cp:4.46,i:326074},
+{n:'FM 100.9 Caceres',k:3,rch:.126,pf:'Informativa',ns:'Medio/Bajo',ed:'30-60',cp:3.08,i:208858},
+{n:'FM 101.9 QTH',k:5,rch:.091,pf:'Informativa',ns:'Medio',ed:'18-60',cp:2.90,i:444000},
+{n:'AM 990 Formosa',k:6,rch:.086,pf:'Informativa',ns:'Medio',ed:'30-60',cp:6.62,i:306147}]},
+{n:'San Juan',r:'Cuyo',p:550000,c:.513,u:282231,x:64,y:150,rs:[
+{n:'FM 97.1 Estación Claridad',k:1,rch:.182,pf:'Informativa',ns:'Medio/Bajo',ed:'30-60',cp:3.19,i:613786},
+{n:'FM 101.1 Radio del Sur',k:3,rch:.172,pf:'Musical',ns:'Medio/Bajo',ed:'18-60',cp:3.16,i:573293},
+{n:'FM 104.3 Lider',k:5,rch:.129,pf:'Informativa',ns:'Medio/Bajo',ed:'18-45',cp:2.19,i:298368},
+{n:'AM 1020 San Juan',k:6,rch:.067,pf:'Informativa',ns:'Medio/Bajo',ed:'30-60',cp:9.94,i:703296},
+{n:'FM 93.1 Universidad',k:7,rch:.057,pf:'Informativa',ns:'Medio/Bajo',ed:'30-60',cp:0.80,i:119880}]},
+{n:'San Luis',r:'Cuyo',p:230000,c:.577,u:132688,x:94,y:178,rs:[
+{n:'FM 98.5 Radio Popular',k:1,rch:.300,pf:'Informativa',ns:'Medio/Bajo',ed:'30-60',cp:14.93,i:1978180},
+{n:'FM 97.9 Universidad',k:2,rch:.180,pf:'Informativa',ns:'Medio',ed:'30-60',cp:4.56,i:362304},
+{n:'FM 101.5 Siempre',k:5,rch:.100,pf:'Informativa',ns:'Medio/Alto',ed:'30-60',cp:15.29,i:675164},
+{n:'FM 97.5 La Bomba',k:6,rch:.090,pf:'Informativa',ns:'Medio/Bajo',ed:'30-60',cp:6.43,i:255744},
+{n:'FM 100.7 Estación XLW',k:7,rch:.100,pf:'Musical',ns:'Medio',ed:'30-60',cp:3.94,i:173906}]},
+{n:'Paraná',r:'Centro',p:320000,c:.579,u:185137,x:188,y:154,rs:[
+{n:'FM 92.1 Radio Mitre',k:1,rch:.235,pf:'Informativa',ns:'Medio',ed:'30-60',cp:3.54,i:511488},
+{n:'FM 99.9 La 100',k:2,rch:.210,pf:'Musical',ns:'Medio/Alto',ed:'18-45',cp:3.96,i:511488},
+{n:'FM 103.1 Litoral',k:4,rch:.132,pf:'Informativa',ns:'Medio/Alto',ed:'18-45',cp:1.68,i:136397},
+{n:'FM 88.1 Costa Paraná',k:5,rch:.121,pf:'Informativa',ns:'Medio/Alto',ed:'18-45',cp:2.01,i:466200},
+{n:'FM 93.9 Power',k:7,rch:.086,pf:'Musical',ns:'Medio/Alto',ed:'18-45',cp:7.74,i:409190}]},
+{n:'La Plata',r:'Centro',p:900000,c:.565,u:508604,x:220,y:208,rs:[
+{n:'FM 100.3 La Redonda',k:1,rch:.192,pf:'Informativa',ns:'Medio/Alto',ed:'30-60',cp:6.58,i:2182349},
+{n:'FM 92.1 Red 92',k:2,rch:.185,pf:'Informativa',ns:'Medio',ed:'30-60',cp:7.63,i:2438093},
+{n:'AM 1270 Provincia',k:3,rch:.158,pf:'Informativa',ns:'Medio',ed:'18-45',cp:2.45,i:668344},
+{n:'FM 103.5 La Cielo',k:4,rch:.140,pf:'Informativa',ns:'Medio/Alto',ed:'30-60',cp:8.75,i:2116282},
+{n:'FM 96.5 La 96',k:5,rch:.088,pf:'Musical',ns:'Medio/Alto',ed:'18-45',cp:10.09,i:1534464}]},
+{n:'Mar del Plata',r:'Centro',p:700000,c:.549,u:384320,x:236,y:256,rs:[
+{n:'FM 105.9 Amor en el Aire',k:1,rch:.183,pf:'Musical',ns:'Medio',ed:'30-60',cp:3.91,i:960000},
+{n:'FM 101.1 Planet Music',k:5,rch:.131,pf:'Musical',ns:'Medio/Alto',ed:'30-60',cp:5.43,i:960000},
+{n:'FM 102.7 Acqua',k:7,rch:.117,pf:'Musical',ns:'Medio/Alto',ed:'18-45',cp:6.10,i:960000},
+{n:'FM 90.1 Rivadavia',k:9,rch:.097,pf:'Informativa',ns:'Medio/Alto',ed:'30-60',cp:7.35,i:960000}]},
+{n:'Bahía Blanca',r:'Centro',p:350000,c:.615,u:215315,x:168,y:268,rs:[
+{n:'AM 840 LU2 Radio',k:1,rch:.323,pf:'Informativa',ns:'Medio',ed:'30-60',cp:34.08,i:7397395},
+{n:'FM 93.9 Urbana',k:3,rch:.172,pf:'Informativa',ns:'Medio/Alto',ed:'18-45',cp:1.84,i:213120},
+{n:'FM 94.7 Ciudad',k:7,rch:.098,pf:'Musical',ns:'Medio',ed:'18-45',cp:54.69,i:3601728}]},
+{n:'Santa Rosa',r:'Centro',p:130000,c:.588,u:76396,x:130,y:234,rs:[
+{n:'FM 99.5 Radio Noticias',k:1,rch:.315,pf:'Informativa',ns:'Medio',ed:'30-60',cp:17.79,i:1398493},
+{n:'FM 100.9 Radio Mitre',k:2,rch:.170,pf:'Informativa',ns:'Medio/Alto',ed:'30-60',cp:2.13,i:282828},
+{n:'FM 105.3 La 100',k:3,rch:.145,pf:'Musical',ns:'Medio/Alto',ed:'30-60',cp:14.13,i:511488},
+{n:'FM 92.9 La Red',k:6,rch:.077,pf:'Informativa',ns:'Medio/Alto',ed:'30-60',cp:4.04,i:242424},
+{n:'FM 95.5 La 96 Latina',k:7,rch:.081,pf:'Musical',ns:'Medio',ed:'30-60',cp:5.60,i:283050}]},
+{n:'Neuquén',r:'Patagonia',p:400000,c:.602,u:240888,x:68,y:270,rs:[
+{n:'AM 600 LU5',k:1,rch:.280,pf:'Informativa',ns:'Medio',ed:'30-60',cp:10.61,i:2282515},
+{n:'FM 90.5 Radio Mitre',k:2,rch:.200,pf:'Informativa',ns:'Medio',ed:'30-60',cp:7.52,i:1155110},
+{n:'FM 103.7 Universidad',k:3,rch:.120,pf:'Informativa',ns:'Medio',ed:'30-60',cp:3.47,i:319680},
+{n:'FM 93.7 La Red',k:5,rch:.147,pf:'Informativa',ns:'Medio',ed:'18-45',cp:11.04,i:1246752},
+{n:'AM 550 La Primera',k:6,rch:.080,pf:'Informativa',ns:'Medio',ed:'18-45',cp:18.84,i:1157242}]},
+{n:'Bariloche',r:'Patagonia',p:120000,c:.641,u:76967,x:30,y:300,rs:[
+{n:'FM 90.5 Bariloche',k:1,rch:.241,pf:'Informativa',ns:'Medio',ed:'30-60',cp:9.35,i:735264},
+{n:'FM 89.5 Radio Con Vos',k:2,rch:.251,pf:'Informativa',ns:'Medio',ed:'18-60',cp:7.28,i:596736},
+{n:'FM 103.1 Radio 6',k:3,rch:.177,pf:'Informativa',ns:'Medio',ed:'30-60',cp:15.94,i:920678},
+{n:'FM 101.9 La 100',k:4,rch:.154,pf:'Musical',ns:'Medio/Alto',ed:'18-45',cp:8.82,i:443290}]},
+{n:'Comodoro Rivadavia',r:'Patagonia',p:220000,c:.762,u:167622,x:82,y:376,rs:[
+{n:'FM 98.7 Del Mar',k:1,rch:.362,pf:'Informativa',ns:'Medio',ed:'30-60',cp:4.21,i:643622},
+{n:'FM 99.5 Radiovisión',k:2,rch:.277,pf:'Informativa',ns:'Medio',ed:'30-60',cp:8.60,i:1005926},
+{n:'FM 100.1 La 100',k:3,rch:.268,pf:'Informativa',ns:'Medio/Alto',ed:'30-60',cp:2.96,i:335025},
+{n:'FM 89.3 Petrolera',k:4,rch:.235,pf:'Informativa',ns:'Medio',ed:'18-45',cp:4.48,i:1110000}]},
+{n:'Trelew',r:'Patagonia',p:120000,c:.703,u:84326,x:112,y:336,rs:[
+{n:'AM 580 LU20 Radio Chubut',k:1,rch:.515,pf:'Informativa',ns:'Medio',ed:'30-60',cp:31.84,i:3780749},
+{n:'FM 96.9 Trelew Noticias',k:3,rch:.143,pf:'Informativa',ns:'Medio/Alto',ed:'30-60',cp:27.97,i:920678}]},
+{n:'Río Gallegos',r:'Patagonia',p:110000,c:.449,u:49441,x:60,y:464,rs:[
+{n:'AM 680 LU12 Río Gallegos',k:2,rch:.176,pf:'Informativa',ns:'Medio',ed:'30-60',cp:147.19,i:5485709},
+{n:'FM 97.5 Tiempo',k:3,rch:.188,pf:'Informativa',ns:'Medio',ed:'30-60',cp:23.59,i:937728},
+{n:'FM 103.5 Bangkok',k:5,rch:.176,pf:'Musical',ns:'Medio/Alto',ed:'30-60',cp:3.91,i:546120}]},
+{n:'Ushuaia',r:'Patagonia',p:95000,c:.628,u:59618,x:78,y:505,rs:[
+{n:'FM Radio Provincia 100.1',k:1,rch:.278,pf:'Informativa',ns:'Medio',ed:'18-45',cp:1.75,i:333000},
+{n:'FM Masters 107.3',k:2,rch:.266,pf:'Informativa',ns:'Medio/Alto',ed:'30-60',cp:45.07,i:2188742},
+{n:'FM Los 40 Principales 101.5',k:3,rch:.213,pf:'Musical',ns:'Medio',ed:'18-45',cp:43.88,i:1704960},
+{n:'FM Monumental 94.9',k:5,rch:.107,pf:'Informativa',ns:'Medio',ed:'30-60',cp:14.26,i:277056}]},
+];
+
+
+const COORDS={
+  'Córdoba':[-64.18,-31.42],'Rosario':[-60.70,-32.89],'Mendoza':[-68.83,-32.89],
+  'Jujuy':[-65.30,-24.19],'Santa Fe':[-60.70,-31.63],'Salta':[-65.41,-24.79],
+  'Tucumán':[-65.22,-26.83],'Santiago del Estero':[-64.26,-27.78],
+  'La Rioja':[-66.86,-29.41],'Catamarca':[-65.78,-28.47],
+  'Resistencia':[-58.99,-27.45],'Corrientes':[-58.83,-27.47],
+  'Posadas':[-55.90,-27.37],'Formosa':[-58.18,-26.18],
+  'San Juan':[-68.53,-31.54],'San Luis':[-66.34,-33.30],
+  'Paraná':[-60.53,-31.73],'La Plata':[-57.95,-34.92],
+  'Mar del Plata':[-57.56,-38.00],'Bahía Blanca':[-62.27,-38.72],
+  'Santa Rosa':[-64.29,-36.62],'Neuquén':[-68.06,-38.95],
+  'Bariloche':[-71.31,-41.13],'Comodoro Rivadavia':[-67.50,-45.87],
+  'Trelew':[-65.31,-43.25],'Río Gallegos':[-69.22,-51.62],
+  'Ushuaia':[-68.30,-54.81],
+};
+const PROV_REGION={
+  'Jujuy':'NOA','Salta':'NOA','Tucumán':'NOA','Santiago del Estero':'NOA',
+  'La Rioja':'NOA','Catamarca':'NOA',
+  'Formosa':'NEA','Chaco':'NEA','Corrientes':'NEA','Misiones':'NEA',
+  'Mendoza':'Cuyo','San Juan':'Cuyo','San Luis':'Cuyo',
+  'Córdoba':'Centro','Santa Fe':'Centro','Entre Ríos':'Centro',
+  'Buenos Aires':'Centro','La Pampa':'Centro',
+  'Ciudad Autónoma de Buenos Aires':'Centro','Ciudad de Buenos Aires':'Centro',
+  'Neuquén':'Patagonia','Río Negro':'Patagonia','Chubut':'Patagonia',
+  'Santa Cruz':'Patagonia','Tierra del Fuego':'Patagonia',
+  'Tierra del Fuego, Antártida e Islas del Atlántico Sur':'Patagonia',
+};
+
+const ARG="M 112,0 L 182,0 L 268,52 L 244,84 L 226,92 L 215,105 L 210,160 L 240,198 L 222,252 L 200,268 L 162,276 L 132,288 L 112,312 L 102,342 L 80,370 L 70,432 L 60,462 L 52,490 L 22,510 L 18,480 L 24,452 L 30,418 L 38,388 L 40,358 L 36,330 L 36,306 L 38,284 L 42,262 L 42,240 L 48,200 L 55,168 L 60,148 L 68,96 L 80,58 L 84,28 Z";
+const TDF="M 55,494 L 100,490 L 104,516 L 60,520 Z";
+
+// Demographic profiles
+const NSE_P={'Medio/Alto':[55,35,10],'Medio':[30,45,25],'Medio/Bajo':[12,40,48]};
+const AGE_P={'18-45':[40,45,12,3],'30-60':[8,42,38,12],'18-60':[22,40,30,8]};
+function getRegion(plName){return Object.keys(REGIONS).find(r=>REGIONS[r].plazas.includes(plName))||'Centro';}
+
+// Helpers
+function calc(pl,sel){
+  const rs=pl.rs.filter(r=>sel.has(r.n));
+  if(!rs.length)return{inv:0,contacts:0,cpm:0,reach:0,avisos:0};
+  const inv=rs.reduce((s,r)=>s+r.i*D,0);
+  const reach=1-rs.reduce((p,r)=>p*(1-r.rch),1);
+  const contacts=Math.round(pl.p*reach);
+  const avisos=rs.length*120; // 4/day x 30 days
+  return{inv,contacts,cpm:contacts?inv/contacts:0,reach,avisos};
+}
+function calcDemo(plazas,campaign){
+  let totalW=0;
+  let nse=[0,0,0],age=[0,0,0,0];
+  Object.entries(campaign).forEach(([nm,sel])=>{
+    const p=plazas.find(pl=>pl.n===nm);if(!p)return;
+    p.rs.filter(r=>sel.has(r.n)).forEach(r=>{
+      const w=p.p*r.rch;
+      totalW+=w;
+      const n=NSE_P[r.ns]||[25,45,30];
+      const a=AGE_P[r.ed]||[20,40,30,10];
+      nse.forEach((_,i)=>nse[i]+=n[i]*w);
+      age.forEach((_,i)=>age[i]+=a[i]*w);
+    });
+  });
+  if(!totalW)return null;
+  return{nse:nse.map(v=>Math.round(v/totalW)),age:age.map(v=>Math.round(v/totalW))};
+}
+const fA=n=>n>=1e6?'$'+(n/1e6).toFixed(1)+'M':n>=1000?'$'+Math.round(n).toLocaleString('es-AR'):'$'+Math.round(n);
+const fN=n=>n>=1e6?(n/1e6).toFixed(1)+'M':n>=1000?(n/1000).toFixed(0)+'k':''+Math.round(n);
+const fP=n=>(n*100).toFixed(1)+'%';
+const cc=v=>v<=B*1.1?'#047857':v<=B*2?'#B45309':'#B01C1C';
+const ccBg=v=>v<=B*1.1?'cc-ok-bg':v<=B*2?'cc-mid-bg':'cc-bad-bg';
+const cpmLbl=v=>v<=B*1.1?'Listo ✓':v<=B*2?'Ajuste →':'Swap ⚑';
+
+// Animated counter
+function Counter({target,prefix='',suffix='',duration=2000}){
+  const[val,setVal]=useState(0);
+  useEffect(()=>{
+    let start=null;
+    const step=ts=>{
+      if(!start)start=ts;
+      const p=Math.min((ts-start)/duration,1);
+      const ease=1-Math.pow(1-p,3);
+      setVal(Math.round(ease*target));
+      if(p<1)requestAnimationFrame(step);
+    };
+    const id=requestAnimationFrame(step);
+    return()=>cancelAnimationFrame(id);
+  },[target]);
+  return React.createElement('span',null,prefix+val.toLocaleString('es-AR')+suffix);
+}
+
+// Argentina SVG Map — D3 + real GeoJSON
+const GEO_URL='https://cdn.jsdelivr.net/gh/codeforamerica/click_that_hood@master/public/data/argentina.geojson';
+
+function ArgMap({activeRegion,campaign,viewed,onPlaza,mode}){
+  const[geo,setGeo]=useState(null); // null=loading, false=error, []=loaded
+  const[proj,setProj]=useState(null);
+  const[hov,setHov]=useState(null);
+  const svgW=280,svgH=520;
+
+  useEffect(()=>{
+    fetch(GEO_URL)
+      .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+      .then(data=>{
+        const p=d3.geoMercator().fitExtent([[6,6],[svgW-6,svgH-6]],data);
+        const pg=d3.geoPath(p);
+        const getName=f=>f.properties.name||f.properties.NAME||f.properties.nombre||'';
+        const feats=data.features
+          .filter(f=>!getName(f).includes('Malvinas'))
+          .map(f=>({name:getName(f),d:pg(f)||'',region:PROV_REGION[getName(f)]||null}));
+        setGeo(feats);
+        setProj(()=>p);
+      })
+      .catch(()=>setGeo(false));
+  },[]);
+
+  const filteredPL=activeRegion?PL.filter(p=>p.r===activeRegion):PL;
+
+  const provColor=(rg,name)=>{
+    if(!rg)return mode==='dark'?'#0A1828':'#C8D4DE';
+    const col=REGIONS[rg]?.col||'#888';
+    if(activeRegion&&rg!==activeRegion)return mode==='dark'?'#0A1420':'#E0E8EF';
+    if(mode==='dark'){
+      const alpha=activeRegion?'DD':'99';
+      return col+alpha;
+    }
+    return col+(activeRegion?'55':'30');
+  };
+
+  const strokeColor=()=>mode==='dark'?'rgba(255,255,255,.12)':'rgba(255,255,255,.9)';
+
+  return(
+    <svg viewBox={`0 0 ${svgW} ${svgH}`} style={{width:'100%',height:'100%',display:'block'}}>
+      <defs>
+        <filter id="glow-g"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        <filter id="glow-b"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        <filter id="shadow"><feDropShadow dx="0" dy="1" stdDeviation="1" floodOpacity="0.2"/></filter>
+      </defs>
+
+      {/* Provinces */}
+      {geo===null&&(
+        <text x={svgW/2} y={svgH/2} textAnchor="middle" fill={mode==='dark'?'#3A6A8A':'#9AA8B8'} fontSize="11" fontFamily="var(--fu)">
+          Cargando mapa...
+        </text>
+      )}
+      {geo===false&&(
+        // Fallback: simple Argentina outline
+        <>
+          <path d="M 112,0 L 182,0 L 268,52 L 244,84 L 226,92 L 215,105 L 210,160 L 240,198 L 222,252 L 200,268 L 162,276 L 132,288 L 112,312 L 102,342 L 80,370 L 70,432 L 60,462 L 52,490 L 22,510 L 18,480 L 24,452 L 30,418 L 38,388 L 40,358 L 36,330 L 36,306 L 38,284 L 42,262 L 42,240 L 48,200 L 55,168 L 60,148 L 68,96 L 80,58 L 84,28 Z"
+            fill={mode==='dark'?'#0A1828':'#DDE6EF'} stroke={mode==='dark'?'#1A4F88':'#B0BEC8'} strokeWidth="1"/>
+        </>
+      )}
+      {geo&&geo.map(f=>(
+        <path key={f.name} d={f.d}
+          fill={provColor(f.region,f.name)}
+          stroke={strokeColor()}
+          strokeWidth={mode==='dark'?'0.4':'0.6'}
+          strokeLinejoin="round"
+          style={{transition:'fill .3s'}}
+        />
+      ))}
+
+      {/* Region labels on dark map */}
+      {mode==='dark'&&geo&&[
+        {rg:'NOA',cx:96,cy:72},
+        {rg:'NEA',cx:226,cy:78},
+        {rg:'Cuyo',cx:72,cy:165},
+        {rg:'Centro',cx:180,cy:195},
+        {rg:'Patagonia',cx:80,cy:390},
+      ].map(({rg,cx,cy})=>{
+        const active=!activeRegion||activeRegion===rg;
+        return(
+          <text key={rg} x={cx} y={cy} textAnchor="middle" dominantBaseline="middle"
+            fontSize="8" fontWeight="800" fontFamily="var(--fu)" letterSpacing="0.08em"
+            fill={REGIONS[rg]?.col||'#888'} opacity={active?0.9:0.2}
+            style={{textTransform:'uppercase',pointerEvents:'none',transition:'opacity .3s'}}>
+            {rg}
+          </text>
+        );
+      })}
+
+      {/* City dots — always render, use D3 proj if available else fallback coords */}
+      {PL.map(pl=>{
+        let x,y;
+        if(proj&&COORDS[pl.n]){try{[x,y]=proj(COORDS[pl.n]);}catch(e){x=pl.x*(svgW/280);y=pl.y;}}
+        else{x=pl.x*(svgW/280);y=pl.y;}
+        if(!x||!y)return null;
+        const rg=pl.r;
+        const col=REGIONS[rg]?.col||'#888';
+        const inC=!!campaign[pl.n],isV=pl.n===viewed,isH=pl.n===hov;
+        const isFiltered=activeRegion&&rg!==activeRegion;
+        if(isFiltered&&!inC)return null;
+        const dotCol=inC?'#10B981':isV?'#4DAAFF':col;
+        const r=isV?8:inC?7:5;
+        const anc=x>svgW/2?'end':'start';
+        const lx=x+(x>svgW/2?-10:10);
+        const show=isV||isH||inC||(mode==='dark'&&!activeRegion)||(activeRegion&&rg===activeRegion);
+        return(
+          <g key={pl.n} onClick={()=>onPlaza&&onPlaza(pl.n)}
+            onMouseEnter={()=>setHov(pl.n)} onMouseLeave={()=>setHov(null)}
+            style={{cursor:onPlaza?'pointer':'default'}}>
+            {(isV||isH)&&<circle cx={x} cy={y} r={15} fill={dotCol} opacity=".15"/>}
+            <circle cx={x} cy={y} r={r} fill={dotCol}
+              stroke={mode==='dark'?'rgba(255,255,255,.3)':'rgba(255,255,255,.95)'} strokeWidth="1.5"
+              filter={inC?'url(#glow-g)':isV?'url(#glow-b)':'none'}
+              style={{transition:'r .15s'}}/>
+            {inC&&<text x={x} y={y+.5} fontSize="5" fill="white" textAnchor="middle" dominantBaseline="middle" style={{pointerEvents:'none',fontWeight:'bold'}}>✓</text>}
+            {show&&(
+              <text x={lx} y={y+.5} fontSize={isV||isH?7.5:6.5}
+                fill={mode==='dark'?(inC?'#7DEBB8':isV?'#A8D4FF':'#7A9AB8'):(inC?col:isV?'#0D4FA8':'#6B7280')}
+                textAnchor={anc} dominantBaseline="middle"
+                style={{pointerEvents:'none',fontWeight:isV||inC?'700':'400',fontFamily:'var(--fu)',
+                  paintOrder:'stroke',stroke:mode==='dark'?'rgba(4,10,22,.95)':'rgba(255,255,255,.95)',strokeWidth:2.5}}>
+                {pl.n.length>16?pl.n.slice(0,14)+'…':pl.n}
+              </text>
+            )}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+
+// Export functions
+function exportAgency(campaign,tot,demo){
+  const wb=XLSX.utils.book_new();
+  const rows=[
+    ['MMX RADIO INTERIOR 2026 — PLANIFICACIÓN DE CAMPAÑA'],[''],
+    ['RESUMEN EJECUTIVO'],
+    ['Plazas',tot.n,'','Inversión total (ARS)',Math.round(tot.inv),'','CPM promedio',+tot.cpm.toFixed(2)],
+    ['Contactos únicos',tot.contacts,'','Total avisos/mes',tot.avisos,'','Benchmark AMBA CPM',B],[''],
+    demo?['PERFIL DEMOGRÁFICO DE LA CAMPAÑA']:[''],
+    demo?['NSE — ABC1+C2',demo.nse[0]+'%','C3',demo.nse[1]+'%','DE',demo.nse[2]+'%']:[''],
+    demo?['Edad — 18-29',demo.age[0]+'%','30-44',demo.age[1]+'%','45-60',demo.age[2]+'%','60+',demo.age[3]+'%']:[''],
+    [''],
+    ['DETALLE POR RADIO'],
+    ['Plaza','Provincia','Región','Medio','Ranking','Tipo','Perfil','NSE','Edad','Reach %','Audiencia est.','Salidas/día','Avisos/mes','C/Neto aviso (ARS)','Inversión neta/mes (ARS)'],
+  ];
+  Object.entries(campaign).forEach(([nm,sel])=>{
+    const p=PL.find(pl=>pl.n===nm);if(!p)return;
+    const pm=calc(p,sel);
+    const rg=getRegion(nm);
+    p.rs.filter(r=>sel.has(r.n)).forEach((r,i)=>{
+      rows.push([
+        i===0?nm:'',i===0?REGIONS[rg]?.provs?.find(pv=>pv.city.includes(nm)||pv.n===nm)?.n||rg:'',
+        i===0?rg:'',r.n,r.k,r.n.startsWith('AM')?'AM':'FM',r.pf,r.ns,r.ed,
+        (r.rch*100).toFixed(1)+'%',Math.round(p.p*r.rch),4,120,
+        Math.round(r.i/87),Math.round(r.i*D)
+      ]);
+    });
+    rows.push(['','','','SUBTOTAL — '+nm,'','','','','','','',
+      '',pm.avisos,'',Math.round(pm.inv)]);
+    rows.push(['']);
+  });
+  rows.push(['','','','TOTAL CAMPAÑA','','','','','','','',
+    '',tot.avisos,'',Math.round(tot.inv)]);
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:20},{wch:14},{wch:12},{wch:28},{wch:8},{wch:5},{wch:12},{wch:12},{wch:10},{wch:10},{wch:14},{wch:12},{wch:12},{wch:18},{wch:20}];
+  XLSX.utils.book_append_sheet(wb,'Planificación',ws);
+  return wb;
+}
+
+function exportOP(campaign,tot,opData){
+  const wb=XLSX.utils.book_new();
+  const today=new Date().toLocaleDateString('es-AR');
+  const opNum='OP-'+Date.now().toString().slice(-6);
+  const rows=[
+    ['MMX RADIO INTERIOR 2026'],
+    ['ORDEN DE PUBLICIDAD','','','','','','Nro.:',opNum],
+    ['Fecha:',today,'','','','','',''],[''],
+    ['DATOS DEL ANUNCIANTE'],
+    ['Razón Social / Empresa:',opData.empresa||'___________________'],
+    ['CUIT:',opData.cuit||'___________________','','Teléfono:',opData.tel||'___________________'],
+    ['Contacto:',opData.contacto||'___________________','','E-mail:',opData.email||'___________________'],
+    ['Producto / Marca:',opData.producto||'___________________'],
+    ['Campaña:',opData.campana||'___________________','','Período:',opData.desde||'_______________','al',opData.hasta||'_______________'],
+    [''],
+    ['DETALLE DE PAUTA'],
+    ['Medio','Plaza','Provincia','Región','Prog./Daypart','Medida','Salidas/Día','Avisos/Mes','C/Bruto x Aviso (ARS)','Dto. %','C/Neto x Aviso (ARS)','Costo Neto Mes (ARS)'],
+  ];
+  let totAvisos=0,totBruto=0,totNeto=0;
+  Object.entries(campaign).forEach(([nm,sel])=>{
+    const p=PL.find(pl=>pl.n===nm);if(!p)return;
+    const rg=getRegion(nm);
+    const prov=REGIONS[rg]?.provs?.find(pv=>pv.city.includes(nm)||pv.n===nm)?.n||rg;
+    p.rs.filter(r=>sel.has(r.n)).forEach(r=>{
+      const bruto=Math.round(r.i/87);
+      const neto=Math.round(r.i*D/87);
+      totAvisos+=120;totBruto+=Math.round(r.i/D);totNeto+=Math.round(r.i*D);
+      rows.push([r.n,nm,prov,rg,'Rotativo 06:00–00:00','15\"',4,120,bruto,20,neto,Math.round(r.i*D)]);
+    });
+  });
+  const iva=Math.round(totNeto*0.21);
+  rows.push(['']);
+  rows.push(['TOTALES','','','','','','',totAvisos,'','',Math.round(totNeto/totAvisos).toLocaleString('es-AR'),Math.round(totNeto).toLocaleString('es-AR')]);
+  rows.push(['IVA 21%','','','','','','','','','','',iva.toLocaleString('es-AR')]);
+  rows.push(['TOTAL CON IVA','','','','','','','','','','',(totNeto+iva).toLocaleString('es-AR')]);
+  rows.push(['']);
+  rows.push(['Materiales:','Sin material — el anunciante provee el spot']);
+  rows.push(['Observaciones:',opData.obs||'']);
+  rows.push(['']);
+  rows.push(['Moneda: PESO ARGENTINO']);
+  rows.push(['Condiciones Generales: sujeto a disponibilidad de pauta. Tarifas con -20% de descuento sobre tarifa de lista.']);
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:28},{wch:14},{wch:14},{wch:10},{wch:22},{wch:8},{wch:12},{wch:12},{wch:20},{wch:8},{wch:20},{wch:20}];
+  XLSX.utils.book_append_sheet(wb,'Orden de Publicidad',ws);
+  return wb;
+}
+
+function downloadWB(wb,name){
+  try{
+    if(typeof XLSX==='undefined')throw new Error('Librería Excel no cargada — verificá tu conexión');
+    const b64=XLSX.write(wb,{bookType:'xlsx',type:'base64'});
+    const a=document.createElement('a');
+    a.href='data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,'+b64;
+    a.download=name;
+    a.style.display='none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>document.body.removeChild(a),200);
+  }catch(e){alert('Error al exportar: '+e.message);}
+}
+
+// ── MAIN APP ────────────────────────────────────────────────────────────────
+function App(){
+  const[screen,setScreen]=useState('panorama');
+  const[activeRegion,setActiveRegion]=useState(null);
+  const[viewedPlaza,setViewedPlaza]=useState(null);
+  const[tempSel,setTempSel]=useState(new Set());
+  const[campaign,setCampaign]=useState({});
+  const[opData,setOpData]=useState({empresa:'',cuit:'',tel:'',contacto:'',email:'',producto:'',campana:'',desde:'',hasta:'',obs:''});
+  const[panReady,setPanReady]=useState(false);
+
+  useEffect(()=>{const t=setTimeout(()=>setPanReady(true),400);return()=>clearTimeout(t);},[]);
+
+
+  const regionKPIs=useMemo(()=>{
+    const list=activeRegion?PL.filter(p=>p.r===activeRegion):PL;
+    const contacts=list.reduce((s,p)=>s+p.u,0);
+    const coverage=Math.round(list.reduce((s,p)=>s+p.c,0)/list.length*100);
+    let bestCPM=Infinity,bestPlaza='';
+    list.forEach(p=>{
+      const inv=p.rs.reduce((s,r)=>s+r.i*D,0);
+      const cpm=inv/p.u;
+      if(cpm<bestCPM){bestCPM=cpm;bestPlaza=p.n;}
+    });
+    return{contacts,coverage,bestCPM,bestPlaza,n:list.length};
+  },[activeRegion]);
+
+  const pObj=PL.find(p=>p.n===viewedPlaza);
+
+  function openPlaza(name){
+    const p=PL.find(pl=>pl.n===name);if(!p)return;
+    setViewedPlaza(name);
+    setTempSel(campaign[name]?new Set(campaign[name]):new Set(p.rs.map(r=>r.n)));
+    setScreen('constructor');
+  }
+  function togR(n){setTempSel(prev=>{const nx=new Set(prev);nx.has(n)?nx.delete(n):nx.add(n);return nx;});}
+  function addCampaign(){if(!viewedPlaza||!tempSel.size)return;setCampaign(prev=>({...prev,[viewedPlaza]:new Set(tempSel)}));}
+  function remPlaza(n){setCampaign(prev=>{const nx={...prev};delete nx[n];return nx;});}
+
+  const tot=useMemo(()=>{
+    let inv=0,contacts=0,avisos=0;
+    Object.entries(campaign).forEach(([nm,sel])=>{
+      const p=PL.find(pl=>pl.n===nm);if(!p)return;
+      const m=calc(p,sel);inv+=m.inv;contacts+=m.contacts;avisos+=m.avisos;
+    });
+    return{inv,contacts,cpm:contacts?inv/contacts:0,avisos,n:Object.keys(campaign).length};
+  },[campaign]);
+
+  const preview=pObj?calc(pObj,tempSel):null;
+  const demo=useMemo(()=>calcDemo(PL,campaign),[campaign]);
+
+  // Demo of SELECTED (in constructor)
+  const prevDemo=useMemo(()=>{
+    if(!pObj||!tempSel.size)return null;
+    const fakeC={[pObj.n]:tempSel};
+    return calcDemo(PL,fakeC);
+  },[pObj,tempSel]);
+
+  // Region chips
+  const RegionChips=({mode})=>(
+    <div className="region-chips">
+      {['Todas',...Object.keys(REGIONS)].map(r=>{
+        const rg=r==='Todas'?null:r;
+        const active=activeRegion===rg;
+        const rcol=rg?REGIONS[rg].col:'#555';
+        if(mode==='dark')return(
+          <div key={r} className="r-chip" onClick={()=>setActiveRegion(rg)}
+            style={{color:active?'#fff':rcol,background:active?rcol:'rgba(255,255,255,.06)',
+              borderColor:active?rcol:'rgba(255,255,255,.12)',fontSize:10}}>
+            {r}
+          </div>
+        );
+        return(
+          <div key={r} className="r-chip-con" onClick={()=>setActiveRegion(rg)}
+            style={{color:active?'#fff':rcol,background:active?rcol:rg?REGIONS[rg].chip:'#F0EDE8',
+              borderColor:active?rcol:rg?REGIONS[rg].col:'#C8C0B0',fontSize:11}}>
+            {r}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  // Demo bars component
+  const DemoBars=({d,blue,size='sm'})=>{
+    if(!d)return null;
+    const lh=size==='lg'?8:4;
+    const fs=size==='lg'?'11px':'9.5px';
+    const DBar=({label,pct,color})=>(
+      <div className={size==='lg'?'demo-h-bar':'demo-bar-row'}>
+        {size==='lg'?(
+          <>
+            <div className="demo-h-lbl" style={{fontSize:fs}}>{label}</div>
+            <div className="demo-h-track" style={{height:lh+'px'}}><div className="demo-h-fill" style={{width:pct+'%',background:color}}/></div>
+            <div className="demo-h-pct" style={{fontSize:fs}}>{pct}%</div>
+          </>
+        ):(
+          <>
+            <div className="demo-bar-top" style={{fontSize:fs}}><span>{label}</span><span>{pct}%</span></div>
+            <div className="demo-track" style={{height:lh+'px'}}><div className="demo-fill" style={{width:pct+'%',background:color}}/></div>
+          </>
+        )}
+      </div>
+    );
+    return(
+      <>
+        <div className="demo-title" style={{fontSize:'9px',textTransform:'uppercase',letterSpacing:'.07em',color:'#A0ADB8',fontWeight:700,marginBottom:6}}>NSE</div>
+        <DBar label="ABC1 + C2" pct={d.nse[0]} color={blue||'#0D4FA8'}/>
+        <DBar label="C3" pct={d.nse[1]} color={blue?blue+'AA':'#60A5FA'}/>
+        <DBar label="D / E" pct={d.nse[2]} color="#CBD5E1"/>
+        <div style={{height:8}}/>
+        <div className="demo-title" style={{fontSize:'9px',textTransform:'uppercase',letterSpacing:'.07em',color:'#A0ADB8',fontWeight:700,marginBottom:6}}>Edad</div>
+        <DBar label="18–29" pct={d.age[0]} color="#10B981"/>
+        <DBar label="30–44" pct={d.age[1]} color="#047857"/>
+        <DBar label="45–60" pct={d.age[2]} color="#065F46"/>
+        <DBar label="60+" pct={d.age[3]} color="#CBD5E1"/>
+      </>
+    );
+  };
+
+  return(
+    <div className="app">
+      {/* NAV */}
+      <nav className="top-nav">
+        <div className="nav-logo">MMX <span>Radio</span></div>
+        <div className="nav-sep"/>
+        {[{id:'panorama',lbl:'Panorama'},{id:'constructor',lbl:'Constructor'},{id:'propuesta',lbl:'Propuesta'},{id:'fundamentos',lbl:'Fundamentos'}].map((s,i)=>(
+          <div key={s.id} className={`nav-step${screen===s.id?' active':tot.n>0&&s.id==='propuesta'?' done':''}`}
+            onClick={()=>setScreen(s.id)}>
+            <div className="step-n">{i+1}</div>{s.lbl}
+          </div>
+        ))}
+        <div className="nav-right">
+          {tot.n>0&&<div style={{fontSize:11,color:'#047857',fontWeight:700,padding:'4px 10px',background:'#DCFCE7',borderRadius:20}}>
+            {tot.n} plaza{tot.n!==1?'s':''} · {fA(tot.inv)} · {fN(tot.contacts)} contactos
+          </div>}
+          {tot.n>0&&<button className="btn-cta" style={{padding:'6px 14px',fontSize:12}} onClick={()=>setScreen('propuesta')}>Ver propuesta →</button>}
+        </div>
+      </nav>
+
+      {/* PANORAMA */}
+      <div className={`screen${screen==='panorama'?' on':''}`} style={{flexDirection:'row'}}>
+        <div className="panorama" style={{flex:1}}>
+          <div className="pan-left">
+            <div className="pan-eyebrow">MMX · Radio Interior Argentina 2026</div>
+            <div className="pan-title">El interior<br/>que tu marca<br/><em>aún no escucha.</em></div>
+            <div className="pan-sub">27 plazas · 5 regiones · plan de 4 salidas diarias en el top 5 de medios locales</div>
+            <div className="pan-kpis">
+              <div className="pan-kpi">
+                <div className="pan-kpi-n blue" key={`c-${activeRegion}`}>
+                  {panReady?<Counter key={`ck-${activeRegion}-${regionKPIs.contacts}`}
+                    target={Math.round(regionKPIs.contacts/1000)} suffix="k"/>:'—'}
+                </div>
+                <div className="pan-kpi-l">personas únicas alcanzables</div>
+                <div className="pan-kpi-cmp">
+                  {activeRegion?`${regionKPIs.n} plazas en ${activeRegion}`:'vs 6,1M en AMBA · interior supera a AMBA'}
+                </div>
+              </div>
+              <div className="pan-kpi featured">
+                <div className="pan-kpi-n" style={{color:'#FBBF24'}}>
+                  {panReady?<Counter key="avisos" target={120} suffix=" avisos"/>:'—'}
+                </div>
+                <div className="pan-kpi-l">por radio · por mes</div>
+                <div className="pan-kpi-cmp">4 salidas diarias × 30 días · imposible en AMBA a este costo</div>
+              </div>
+              <div className="pan-kpi">
+                <div className="pan-kpi-n green">
+                  {panReady?<Counter key={`cov-${activeRegion}-${regionKPIs.coverage}`}
+                    target={regionKPIs.coverage} suffix="%"/>:'—'}
+                </div>
+                <div className="pan-kpi-l">cobertura promedio por plaza</div>
+                <div className="pan-kpi-cmp">del universo radio en cada localidad</div>
+              </div>
+              <div className="pan-kpi">
+                <div className="pan-kpi-n" style={{color:'#A3E635'}}>
+                  {panReady?<>$<Counter key={`cpm-${activeRegion}-${Math.round(regionKPIs.bestCPM*100)}`}
+                    target={Math.round(regionKPIs.bestCPM*100)} suffix=""/><span style={{fontSize:16}}> ARS</span></>:'—'}
+                </div>
+                <div className="pan-kpi-l">CPM mejor plaza (con −20%)</div>
+                <div className="pan-kpi-cmp">
+                  {activeRegion?`plaza más eficiente: ${regionKPIs.bestPlaza}`:'benchmark AMBA $7.79 · mismo estándar'}
+                </div>
+              </div>
+            </div>
+            <button className="btn-cta" onClick={()=>setScreen('constructor')}>
+              Armar mi campaña
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </button>
+          </div>
+          <div className="pan-right">
+            <div className="pan-map-header">
+              <div className="pan-map-title">Argentina — 27 plazas en 5 regiones</div>
+              <RegionChips mode="dark"/>
+              {activeRegion&&(
+                <div style={{marginTop:8,background:'rgba(255,255,255,.05)',borderRadius:8,padding:'8px 10px'}}>
+                  <div style={{fontSize:10,fontWeight:700,color:REGIONS[activeRegion].col,marginBottom:4}}>{activeRegion} — Provincias y localidades</div>
+                  {REGIONS[activeRegion].provs.map(pv=>(
+                    <div key={pv.n} style={{fontSize:10,color:'#4A6A8A',lineHeight:1.6}}>
+                      <span style={{color:'#7A9AB8',fontWeight:600}}>{pv.n}:</span> {pv.city}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="pan-map-svg">
+              <ArgMap campaign={campaign} viewed={viewedPlaza} onPlaza={openPlaza}
+                activeRegion={activeRegion} mode="dark"/>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* CONSTRUCTOR */}
+      <div className={`screen${screen==='constructor'?' on':''}`} style={{flexDirection:'column'}}>
+        <div className="constructor">
+          <div className="con-toolbar">
+            <span className="con-toolbar-label">Región:</span>
+            <RegionChips mode="light"/>
+          </div>
+          <div className="con-body">
+            {/* MAP */}
+            <div className="con-map">
+              <div style={{padding:'8px 12px',borderBottom:'1px solid #E4DDD2',background:'#fff'}}>
+                <div style={{fontSize:10,fontWeight:700,color:'#A0ADB8',textTransform:'uppercase',letterSpacing:'.06em'}}>
+                  {activeRegion||'Todas las plazas'} · click para ver radios
+                </div>
+              </div>
+              <div className="con-map-svg">
+                <ArgMap campaign={campaign} viewed={viewedPlaza} onPlaza={openPlaza}
+                  activeRegion={activeRegion} mode="light"/>
+              </div>
+              {/* Region info */}
+              {activeRegion&&(
+                <div style={{padding:'8px 12px',borderTop:'1px solid #E4DDD2',background:'#FAFAF8'}}>
+                  {REGIONS[activeRegion].provs.map(pv=>(
+                    <div key={pv.n} style={{fontSize:10,color:'#6B6157',lineHeight:1.7}}>
+                      <span style={{fontWeight:700,color:REGIONS[activeRegion].col}}>{pv.n}:</span> {pv.city}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* DETAIL */}
+            <div className="con-detail">
+              {!pObj?(
+                <div className="con-empty">
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" opacity=".3">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/>
+                  </svg>
+                  <div style={{fontFamily:'var(--fd)',fontSize:20,color:'#6B6157',fontWeight:600}}>Elegí una plaza</div>
+                  <div style={{fontSize:12,color:'#A0ADB8',lineHeight:1.6,maxWidth:200}}>Hacé clic en cualquier punto del mapa o filtrá por región para ver los medios disponibles</div>
+                </div>
+              ):(
+                <>
+                  <div className="pl-hd">
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+                      <div>
+                        <div className="pl-name">{pObj.n}</div>
+                        <div className="pl-meta">{pObj.r} · {(pObj.p/1000).toFixed(0)}k hab · cobertura completa {fP(pObj.c)}</div>
+                      </div>
+                      {campaign[viewedPlaza]&&<div className="pl-badge" style={{background:'#DCFCE7',color:'#065F46'}}>✓ En campaña</div>}
+                    </div>
+                    {preview&&preview.inv>0&&(
+                      <>
+                        <div className="m4">
+                          {[{l:'Inversión (−20%)',v:fA(preview.inv)},{l:'Contactos únicos',v:fN(preview.contacts)},{l:'Cobertura',v:fP(preview.reach)},{l:'CPM ARS/persona',v:`$${preview.cpm.toFixed(2)}`,c:cc(preview.cpm)}].map(({l,v,c})=>(
+                            <div key={l} className="mc"><div className="mc-l">{l}</div><div className="mc-v" style={{color:c||'var(--ink)'}}>{v}</div></div>
+                          ))}
+                        </div>
+                        <div className="cpm-bar">
+                          <span style={{fontSize:10,color:'#A0ADB8',whiteSpace:'nowrap'}}>vs AMBA ${B}</span>
+                          <div className="cpm-bar-track"><div className="cpm-bar-fill" style={{width:Math.min(100,preview.cpm/B/2.5*100)+'%',background:cc(preview.cpm)}}/></div>
+                          <div className={`cpm-badge ${ccBg(preview.cpm)}`}>{cpmLbl(preview.cpm)}</div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  <div className="con-radios">
+                    <div className="r-sec-lbl">{pObj.rs.length} medios · Plan 4 salidas diarias</div>
+                    {pObj.rs.map((r,i)=>{
+                      const chk=tempSel.has(r.n);
+                      const tipo=r.n.startsWith('AM')?'AM':'FM';
+                      return(
+                        <div key={r.n} className={`rcard${chk?' on':' off'}`} onClick={()=>togR(r.n)}>
+                          <div className={`rchk${chk?' on':''}`}>
+                            {chk&&<svg width="10" height="8" viewBox="0 0 10 8"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" fill="none"/></svg>}
+                          </div>
+                          <div className="rbody">
+                            <div style={{display:'flex',justifyContent:'space-between',gap:8}}>
+                              <div style={{flex:1,minWidth:0}}>
+                                <div className="rname"><span style={{fontSize:10,color:'#A0ADB8',fontWeight:400}}>#{r.k} </span>{r.n}</div>
+                                <div className="rtags">
+                                  <span className={`rtag ${tipo==='AM'?'tag-am':'tag-fm'}`}>{tipo}</span>
+                                  <span className="rtag tag-g">{r.pf}</span>
+                                  <span className="rtag tag-g">NSE {r.ns}</span>
+                                  <span className="rtag tag-g">{r.ed}</span>
+                                </div>
+                              </div>
+                              <div className="rprice">
+                                <div className="rprice-main">{fA(r.i*D)}</div>
+                                <div className="rprice-sub">ARS · mes</div>
+                              </div>
+                            </div>
+                            <div className="rstats">
+                              <span className="rstat">Reach <strong>{fP(r.rch)}</strong></span>
+                              <span className="rstat">Audiencia <strong>{fN(Math.round(pObj.p*r.rch))}</strong></span>
+                              <span className="rstat">CPM <strong style={{color:cc(r.cp)}}>${r.cp.toFixed(2)}</strong></span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div style={{height:80}}/>
+                  </div>
+                  <div className="pl-actions">
+                    <button className="btn-add" onClick={addCampaign} disabled={!tempSel.size}>
+                      {campaign[viewedPlaza]?'Actualizar':'+ Agregar a campaña'} · {tempSel.size} medios
+                    </button>
+                    {campaign[viewedPlaza]&&<button className="btn-rm" onClick={()=>remPlaza(viewedPlaza)}>Quitar</button>}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* CAMPAIGN PANEL */}
+            <div className="con-campaign">
+              <div className="camp-head"><div className="camp-title">Mi campaña</div></div>
+              <div className="camp-totals">
+                {[{l:'Plazas',v:tot.n||'—'},{l:'Inversión',v:tot.inv?fA(tot.inv):'—'},{l:'Contactos',v:tot.contacts?fN(tot.contacts):'—'},{l:'Avisos/mes',v:tot.avisos||'—'},{l:'CPM (ARS/p.)',v:tot.cpm?'$'+tot.cpm.toFixed(2):'—',c:tot.cpm?cc(tot.cpm):undefined}].map(({l,v,c})=>(
+                  <div key={l} className="ct-row"><div className="ct-l">{l}</div><div className="ct-v" style={{color:c||'var(--ink)'}}>{v}</div></div>
+                ))}
+              </div>
+              {demo&&<div className="demo-sec"><DemoBars d={demo} blue="#0D4FA8"/></div>}
+              <div className="camp-plazas">
+                {Object.keys(campaign).length===0&&<div style={{fontSize:11,color:'#A0ADB8',textAlign:'center',padding:'20px 12px'}}>Seleccioná plazas y radios para armar tu campaña</div>}
+                {Object.entries(campaign).map(([nm,sel])=>{
+                  const p=PL.find(pl=>pl.n===nm);if(!p)return null;
+                  const m=calc(p,sel);
+                  return(
+                    <div key={nm} className={`cp-item${nm===viewedPlaza?' active':''}`} onClick={()=>openPlaza(nm)}>
+                      <div className="cp-name">{nm}</div>
+                      <div className="cp-sub">{sel.size} medios · {fA(m.inv)}</div>
+                      <div className="cp-sub">{fN(m.contacts)} contactos · <span style={{color:cc(m.cpm),fontWeight:700}}>CPM ${m.cpm.toFixed(2)}</span></div>
+                    </div>
+                  );
+                })}
+              </div>
+              {tot.n>0&&(
+                <div style={{padding:'10px 12px',borderTop:'1px solid var(--bdr)'}}>
+                  <button onClick={()=>setScreen('propuesta')} style={{width:'100%',padding:'9px',background:'var(--blue)',color:'#fff',border:'none',borderRadius:8,fontSize:12,fontWeight:700,cursor:'pointer'}}>
+                    Ver propuesta →
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* PROPUESTA */}
+      <div className={`screen${screen==='propuesta'?' on':''}`} style={{flexDirection:'column'}}>
+        <div className="propuesta">
+          <div className="prop-header">
+            <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
+              <div>
+                <div className="prop-title">Propuesta de campaña</div>
+                <div style={{fontSize:11,color:'#A0ADB8',marginTop:3}}>Plan Radio Interior · 4 salidas diarias · Top 5 medios por plaza · Tarifas con −20%</div>
+              </div>
+              <div style={{display:'flex',gap:8,flexShrink:0}}>
+                <button onClick={()=>setScreen('constructor')} style={{padding:'7px 14px',background:'transparent',border:'1px solid var(--bdr)',borderRadius:7,fontSize:12,fontWeight:600,cursor:'pointer',color:'var(--ink2)'}}>
+                  ← Editar
+                </button>
+              </div>
+            </div>
+            <div className="prop-kpis">
+              {[{l:'Plazas',v:tot.n||'—'},{l:'Inversión total',v:tot.inv?fA(tot.inv):'—'},{l:'Contactos únicos',v:tot.contacts?fN(tot.contacts):'—'},{l:'Avisos totales/mes',v:tot.avisos||'—'},{l:'CPM (ARS/persona)',v:tot.cpm?'$'+tot.cpm.toFixed(2):'—',c:tot.cpm?cc(tot.cpm):undefined}].map(({l,v,c})=>(
+                <div key={l} className="pk"><div className="pk-l">{l}</div><div className="pk-v" style={{color:c||'var(--ink)'}}>{v}</div></div>
+              ))}
+            </div>
+          </div>
+          {tot.n===0?(
+            <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:12,color:'#A0ADB8'}}>
+              <div style={{fontFamily:'var(--fd)',fontSize:22,color:'#6B6157'}}>Campaña vacía</div>
+              <div style={{fontSize:12}}>Volvé al Constructor y agregá plazas a tu campaña</div>
+              <button onClick={()=>setScreen('constructor')} style={{padding:'9px 20px',background:'var(--blue)',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:700,cursor:'pointer',marginTop:8}}>Ir al Constructor</button>
+            </div>
+          ):(
+            <div className="prop-body">
+              {/* MAP */}
+              <div className="prop-left">
+                <div style={{padding:'10px 14px',borderBottom:'1px solid var(--bdr)',background:'#fff'}}>
+                  <div style={{fontSize:10,fontWeight:700,color:'#A0ADB8',textTransform:'uppercase',letterSpacing:'.06em'}}>Plazas de la campaña</div>
+                </div>
+                <div className="prop-map">
+                  <ArgMap campaign={campaign} viewed={null} onPlaza={openPlaza}
+                    activeRegion={null} mode="light" height="100%"/>
+                </div>
+                {/* Investment by region */}
+                <div style={{padding:'10px 14px',borderTop:'1px solid var(--bdr)',background:'#FAFAF8'}}>
+                  <div style={{fontSize:9,fontWeight:700,color:'#A0ADB8',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:8}}>Inversión por región</div>
+                  {Object.keys(REGIONS).map(rg=>{
+                    const rgInv=Object.entries(campaign).filter(([nm])=>getRegion(nm)===rg).reduce((s,[nm,sel])=>{
+                      const p=PL.find(pl=>pl.n===nm);return p?s+calc(p,sel).inv:s;
+                    },0);
+                    if(!rgInv)return null;
+                    const pct=Math.round(rgInv/tot.inv*100);
+                    return(
+                      <div key={rg} style={{marginBottom:5}}>
+                        <div style={{display:'flex',justifyContent:'space-between',fontSize:10,marginBottom:2}}>
+                          <span style={{color:REGIONS[rg].col,fontWeight:700}}>{rg}</span>
+                          <span style={{color:'#6B6157'}}>{pct}% · {fA(rgInv)}</span>
+                        </div>
+                        <div style={{height:4,background:'#E4DDD2',borderRadius:2,overflow:'hidden'}}>
+                          <div style={{height:'100%',width:pct+'%',background:REGIONS[rg].col,borderRadius:2}}/>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* RIGHT */}
+              <div className="prop-right">
+                {/* Demographics */}
+                {demo&&(
+                  <div className="demo-card">
+                    <div className="demo-card-title">Perfil demográfico de la campaña (reach ponderado)</div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}}>
+                      <div>
+                        <div style={{fontSize:10,fontWeight:700,color:'#6B6157',marginBottom:10}}>NSE</div>
+                        {[['ABC1 + C2',demo.nse[0],'#0D4FA8'],['C3',demo.nse[1],'#60A5FA'],['D / E',demo.nse[2],'#CBD5E1']].map(([l,p,c])=>(
+                          <div key={l} className="demo-h-bar">
+                            <div className="demo-h-lbl">{l}</div>
+                            <div className="demo-h-track"><div className="demo-h-fill" style={{width:p+'%',background:c}}/></div>
+                            <div className="demo-h-pct">{p}%</div>
+                          </div>
+                        ))}
+                      </div>
+                      <div>
+                        <div style={{fontSize:10,fontWeight:700,color:'#6B6157',marginBottom:10}}>Rango etario</div>
+                        {[['18–29',demo.age[0],'#10B981'],['30–44',demo.age[1],'#047857'],['45–60',demo.age[2],'#065F46'],['60+',demo.age[3],'#CBD5E1']].map(([l,p,c])=>(
+                          <div key={l} className="demo-h-bar">
+                            <div className="demo-h-lbl">{l}</div>
+                            <div className="demo-h-track"><div className="demo-h-fill" style={{width:p+'%',background:c}}/></div>
+                            <div className="demo-h-pct">{p}%</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Plaza summary */}
+                <div className="demo-card">
+                  <div className="demo-card-title">Detalle de plazas seleccionadas</div>
+                  {Object.entries(campaign).map(([nm,sel])=>{
+                    const p=PL.find(pl=>pl.n===nm);if(!p)return null;
+                    const m=calc(p,sel);const rg=getRegion(nm);
+                    return(
+                      <div key={nm} className="prop-plaza-row">
+                        <div>
+                          <div className="pp-name">{nm} <span style={{fontSize:9,fontWeight:600,color:REGIONS[rg]?.col,background:REGIONS[rg]?.bg||'#eee',padding:'1px 6px',borderRadius:20,marginLeft:4}}>{rg}</span></div>
+                          <div className="pp-meta">{sel.size} medios · {m.avisos} avisos/mes · {fP(m.reach)} cobertura</div>
+                        </div>
+                        <div style={{textAlign:'right',flexShrink:0}}>
+                          <div style={{fontFamily:'var(--fd)',fontSize:16,fontWeight:600}}>{fA(m.inv)}</div>
+                          <div style={{fontSize:10,color:'var(--ink3)'}}>CPM: <span style={{color:cc(m.cpm),fontWeight:700}}>${m.cpm.toFixed(2)}</span></div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Export */}
+                <div className="op-form">
+                  <div className="op-form-title">Datos del anunciante (para la Orden de Publicidad)</div>
+                  <div className="op-grid">
+                    {[{k:'empresa',l:'Razón Social / Empresa'},{k:'cuit',l:'CUIT'},{k:'tel',l:'Teléfono'},{k:'contacto',l:'Contacto'},{k:'email',l:'E-mail'},{k:'producto',l:'Producto / Marca'},{k:'campana',l:'Nombre de campaña'},{k:'desde',l:'Inicio campaña'},{k:'hasta',l:'Fin campaña'}].map(({k,l})=>(
+                      <div key={k} className="op-field">
+                        <label className="op-label">{l}</label>
+                        <input className="op-input" value={opData[k]} onChange={e=>setOpData(prev=>({...prev,[k]:e.target.value}))} placeholder={l}/>
+                      </div>
+                    ))}
+                    <div className="op-field" style={{gridColumn:'1/-1'}}>
+                      <label className="op-label">Observaciones</label>
+                      <textarea className="op-input" rows={2} value={opData.obs} onChange={e=>setOpData(prev=>({...prev,obs:e.target.value}))} placeholder="Material a proveer, fecha de entrega, condiciones especiales..."/>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="export-section">
+                  <button className="btn-exp agency" onClick={()=>downloadWB(exportAgency(campaign,tot,demo),'MMX_Planificacion_Interior_2026.xlsx')}>
+                    📊 Planificación detallada (Agencias)
+                  </button>
+                  <button className="btn-exp pyme" onClick={()=>downloadWB(exportOP(campaign,tot,opData),'MMX_Orden_de_Publicidad.xlsx')}>
+                    📋 Orden de Publicidad (Pymes)
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* FUNDAMENTOS */}
+      <div className={`screen${screen==='fundamentos'?' on':''}`} style={{flexDirection:'column'}}>
+        <div className="fund-screen">
+          <div className="fund-hero">
+            <div className="fund-hero-eyebrow">MMX Radio Interior · Argumentario</div>
+            <div className="fund-hero-title">Por qué invertir en radio<br/>en el interior argentino.</div>
+            <div className="fund-hero-sub">Datos, estudios y argumentos por eje temático para usar en presentaciones con clientes y agencias.</div>
+          </div>
+          <div className="fund-grid">
+
+            {/* Card 1 */}
+            <div className="fund-card">
+              <div className="fund-card-top">
+                <div className="fund-card-icon">🗺️</div>
+                <div className="fund-card-title">El interior argentino importa</div>
+                <div className="fund-card-sub">Demografía, producción y consumo más allá del AMBA</div>
+                <ul className="fund-card-bullets">
+                  <li style={{color:'var(--blue)'}}><strong>64,4% de los argentinos</strong> vive fuera del AMBA — ~29,8M personas (INDEC, Censo 2022)</li>
+                  <li>El peso del AMBA bajó de 36,8% (2010) a 35,6% (2022). El interior <strong>crece más rápido</strong>.</li>
+                  <li>Santa Fe exportó <strong>USD 16.190M</strong> y Córdoba <strong>USD 10.913M</strong> en 2025 (INDEC)</li>
+                  <li>Neuquén lidera salarios: <strong>$3.274.627</strong> brutos promedio — el más alto del país</li>
+                  <li>El interior <strong>resiste mejor</strong> en consumo que el AMBA en el ciclo 2025-2026 (El Cronista)</li>
+                </ul>
+              </div>
+              <div className="fund-card-foot">
+                <div className="fund-card-source">Fuentes: INDEC Censo 2022 · INDEC exportaciones 2025 · Infobae mapa económico, mayo 2026 · El Cronista, mayo 2026</div>
+              </div>
+            </div>
+
+            {/* Card 2 */}
+            <div className="fund-card">
+              <div className="fund-card-top">
+                <div className="fund-card-icon">📡</div>
+                <div className="fund-card-title">El medio local conecta diferente</div>
+                <div className="fund-card-sub">Idiosincrasia, pertenencia y confianza que los medios nacionales no tienen</div>
+                <ul className="fund-card-bullets">
+                  <li><strong>Córdoba escucha 6hs 16min de radio al día</strong> · reach diario 71% · reach semanal 99% (Kantar IBOPE 2023)</li>
+                  <li>Buenos Aires: 5hs 14min diarios · 63% reach diario. <strong>Córdoba supera a AMBA</strong> en todos los indicadores</li>
+                  <li><strong>47% de los argentinos</strong> escucha radio para informarse; 40% prefiere noticias locales (TGI 2023)</li>
+                  <li>El conductor local es el líder de opinión de su comunidad: relación de confianza construida por décadas</li>
+                  <li>El aviso en radio local no es publicidad externa: es <strong>validación comunitaria</strong></li>
+                </ul>
+              </div>
+              <div className="fund-card-foot">
+                <div className="fund-card-source">Fuentes: Kantar IBOPE Media, enero–diciembre 2023 · TGI 2023 Personas, Kantar · Inside Audio 2024</div>
+              </div>
+            </div>
+
+            {/* Card 3 */}
+            <div className="fund-card">
+              <div className="fund-card-top">
+                <div className="fund-card-icon">📈</div>
+                <div className="fund-card-title">La radio: mayor ROI comprobado</div>
+                <div className="fund-card-sub">Estudios internacionales independientes sobre efectividad publicitaria</div>
+                <ul className="fund-card-bullets">
+                  <li><strong>$6–$7 de retorno por cada $1</strong> invertido en radio — Nielsen Catalina Solutions + Holmes and Cook (estudios independientes, mismo resultado)</li>
+                  <li>Caso récord minorista: <strong>$23 de ROI</strong> por cada dólar invertido en radio (Nielsen Catalina)</li>
+                  <li>Nielsen MMM (2024): <em>"la radio se sitúa sistemáticamente como medio de primer nivel para el ROI"</em></li>
+                  <li>Radio supera a canales digitales en <strong>eficiencia mediática</strong> para adultos 25–64 (Nielsen/Audacy, 2025)</li>
+                  <li><strong>Sin zapping</strong>: el oyente no tiene escape. El aviso llega completo, siempre.</li>
+                </ul>
+              </div>
+              <div className="fund-card-foot">
+                <div className="fund-card-source">Fuentes: Nielsen Catalina Solutions · Holmes and Cook · Nielsen MMM oct. 2024 · Nielsen/Audacy, radioNOTAS abr. 2025</div>
+              </div>
+            </div>
+
+            {/* Card 4 */}
+            <div className="fund-card">
+              <div className="fund-card-top">
+                <div className="fund-card-icon">🔁</div>
+                <div className="fund-card-title">La frecuencia es lo que convierte</div>
+                <div className="fund-card-sub">Estudio EFI Radio: 1.000+ campañas analizadas · Neuromedia / TRES14 Research</div>
+                <ul className="fund-card-bullets">
+                  <li>El recuerdo de marca en radio empieza a construirse <strong>a partir del 4° impacto semanal</strong></li>
+                  <li>Rango de máxima eficacia: <strong>entre 7 y 17 contactos</strong> — abajo no hay recuerdo, arriba hay derroche</li>
+                  <li><strong>27% de las campañas no genera recuerdo</strong> por estar debajo del umbral mínimo</li>
+                  <li><strong>34% tiene construcción tardía</strong> del recuerdo — inversión con retorno fuera de tiempo</li>
+                  <li>Plan MMX: <strong>4 salidas × 5 radios × 30 días = 600 impactos/mes</strong> por plaza · dentro del rango eficaz desde el día 1</li>
+                </ul>
+              </div>
+              <div className="fund-card-foot">
+                <div className="fund-card-source">Fuente: EFI Radio — Neuromedia / TRES14 Research, 2018. Datos: Infoadex, Google, EGM, IMOP. +1.000 campañas analizadas.</div>
+              </div>
+            </div>
+
+          </div>
+          <div className="fund-dl-banner">
+            <div className="fund-dl-text">
+              <strong>📊 Presentación completa disponible para descarga</strong>
+              12 slides con todos los datos, comparativos y argumentos por tipo de cliente. Formato PowerPoint editable.
+            </div>
+            <a href="MMX_Radio_Interior_2026.pptx" download>
+              <button className="fund-dl-btn">↓ Descargar presentación</button>
+            </a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
