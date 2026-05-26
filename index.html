@@ -470,7 +470,7 @@ function calcDemo(plazas,campaign){
   if(!totalW)return null;
   return{nse:nse.map(v=>Math.round(v/totalW)),age:age.map(v=>Math.round(v/totalW))};
 }
-const fA=n=>n>=1e6?'$'+(n/1e6).toFixed(1)+'M':n>=1000?'$'+Math.round(n).toLocaleString('es-AR'):'$'+Math.round(n);
+const fA=n=>n>=1e6?'$'+(n/1e6).toFixed(1)+'M':n>=1000?'$'+Math.round(n):'$'+Math.round(n);
 const fN=n=>n>=1e6?(n/1e6).toFixed(1)+'M':n>=1000?(n/1000).toFixed(0)+'k':''+Math.round(n);
 const fP=n=>(n*100).toFixed(1)+'%';
 const cc=v=>v<=B*1.1?'#047857':v<=B*2?'#B45309':'#B01C1C';
@@ -628,6 +628,23 @@ function ArgMap({activeRegion,campaign,viewed,onPlaza,mode}){
 }
 
 
+
+// Sanitize all cell values before passing to SheetJS
+// SheetJS only accepts string, number, boolean, null — anything else causes indexOf errors
+function sanRow(rows){
+  return rows.map(function(row){
+    return row.map(function(v){
+      if(v===null||v===undefined||v==='')return '';
+      if(typeof v==='number'){
+        if(!isFinite(v))return ''; // no Infinity or NaN
+        return v;
+      }
+      if(typeof v==='string'||typeof v==='boolean')return v;
+      return String(v); // fallback: convert to string
+    });
+  });
+}
+
 // Export functions
 function exportAgency(campaign,tot,demo){
   const X=window.XLSX;if(!X){alert("Librería no disponible");return null;}
@@ -662,7 +679,7 @@ function exportAgency(campaign,tot,demo){
   });
   rows.push(['','','','TOTAL CAMPAÑA','','','','','','','',
     '',tot.avisos,'',Math.round(tot.inv)]);
-  const ws=X.utils.aoa_to_sheet(rows);
+  const ws=X.utils.aoa_to_sheet(sanRow(rows));
   ws['!cols']=[{wch:20},{wch:14},{wch:12},{wch:28},{wch:8},{wch:5},{wch:12},{wch:12},{wch:10},{wch:10},{wch:14},{wch:12},{wch:12},{wch:18},{wch:20}];
   X.utils.book_append_sheet(wb,'Planificación',ws);
   return wb;
@@ -696,21 +713,21 @@ function exportOP(campaign,tot,opData){
       const bruto=Math.round(r.i/87);
       const neto=Math.round(r.i*D/87);
       totAvisos+=120;totBruto+=Math.round(r.i/D);totNeto+=Math.round(r.i*D);
-      rows.push([r.n,nm,prov,rg,'Rotativo 06:00–00:00','15\"',4,120,bruto,20,neto,Math.round(r.i*D)]);
+      rows.push([r.n,nm,prov,rg,'Rotativo 06:00–00:00','15s',4,120,bruto,20,neto,Math.round(r.i*D)]);
     });
   });
   const iva=Math.round(totNeto*0.21);
   rows.push(['']);
-  rows.push(['TOTALES','','','','','','',totAvisos,'','',Math.round(totNeto/totAvisos).toLocaleString('es-AR'),Math.round(totNeto).toLocaleString('es-AR')]);
-  rows.push(['IVA 21%','','','','','','','','','','',iva.toLocaleString('es-AR')]);
-  rows.push(['TOTAL CON IVA','','','','','','','','','','',(totNeto+iva).toLocaleString('es-AR')]);
+  rows.push(['TOTALES','','','','','','',totAvisos,'','',Math.round(totNeto/totAvisos),Math.round(totNeto)]);
+  rows.push(['IVA 21%','','','','','','','','','','',Math.round(iva)]);
+  rows.push(['TOTAL CON IVA','','','','','','','','','','',Math.round(totNeto+iva)]);
   rows.push(['']);
   rows.push(['Materiales:','Sin material — el anunciante provee el spot']);
   rows.push(['Observaciones:',opData.obs||'']);
   rows.push(['']);
   rows.push(['Moneda: PESO ARGENTINO']);
   rows.push(['Condiciones Generales: sujeto a disponibilidad de pauta. Tarifas con -20% de descuento sobre tarifa de lista.']);
-  const ws=X.utils.aoa_to_sheet(rows);
+  const ws=X.utils.aoa_to_sheet(sanRow(rows));
   ws['!cols']=[{wch:28},{wch:14},{wch:14},{wch:10},{wch:22},{wch:8},{wch:12},{wch:12},{wch:20},{wch:8},{wch:20},{wch:20}];
   X.utils.book_append_sheet(wb,'Orden de Publicidad',ws);
   return wb;
