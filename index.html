@@ -629,124 +629,212 @@ function ArgMap({activeRegion,campaign,viewed,onPlaza,mode}){
 
 
 
-// Sanitize all cell values before passing to SheetJS
-// SheetJS only accepts string, number, boolean, null — anything else causes indexOf errors
-function sanRow(rows){
-  return rows.map(function(row){
-    return row.map(function(v){
-      if(v===null||v===undefined||v==='')return '';
-      if(typeof v==='number'){
-        if(!isFinite(v))return ''; // no Infinity or NaN
-        return v;
-      }
-      if(typeof v==='string'||typeof v==='boolean')return v;
-      return String(v); // fallback: convert to string
-    });
-  });
+// Build worksheet manually cell-by-cell — avoids SheetJS's internal type detection
+// which causes indexOf errors with certain value combinations
+
+
+// ── EXCEL HTML EXPORT — formatted, no library needed ─────────────────────────
+// Generates .xls using HTML+CSS inside Excel — preserves colors and formatting
+
+function dlXLS(html, filename){
+  try{
+    // btoa with Unicode support via encodeURIComponent trick
+    var b64=btoa(unescape(encodeURIComponent(html)));
+    var a=document.createElement('a');
+    a.href='data:application/vnd.ms-excel;base64,'+b64;
+    a.download=filename;
+    a.style.display='none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }catch(e){alert('Error al exportar: '+e.message);}
 }
 
-// Export functions
+function xlsHead(title,subtitle){
+  return '<html xmlns:x="urn:schemas-microsoft-com:office:excel">'+
+  '<head><meta charset="UTF-8"><style>'+
+  'body{font-family:Calibri,Arial,sans-serif;font-size:11px;margin:0}'+
+  'table{border-collapse:collapse;width:100%}'+
+  'td{padding:4px 9px;border:0.5px solid #E4DDD2;font-size:11px;vertical-align:middle}'+
+  '.title{background:#040E1B;color:#10B981;font-weight:bold;font-size:15px;padding:12px 14px;border:none;letter-spacing:-0.01em}'+
+  '.subt{background:#0A1F38;color:#4A6A8A;font-size:10px;padding:4px 14px;font-style:italic;border:none}'+
+  '.sec{background:#040E1B;color:#7DEBB8;font-weight:bold;font-size:10px;padding:5px 9px;letter-spacing:0.06em;text-transform:uppercase}'+
+  '.colh{background:#1A3A5C;color:white;font-weight:bold;font-size:9px;text-transform:uppercase;letter-spacing:0.05em;text-align:center}'+
+  '.r0{background:white}.r1{background:#F8F7F4}'+
+  '.sub{background:#E8F5F0;color:#047857;font-weight:bold}'+
+  '.tot{background:#047857;color:white;font-weight:bold}'+
+  '.sum{background:#0A1F38;color:#7DEBB8;font-weight:bold}'+
+  '.n{text-align:right}.c{text-align:center}'+
+  '.m{color:#9E958C;font-size:10px}'+
+  '.bl{background:#F3F0E8;font-weight:bold;color:#040E1B}'+
+  '.op-h{background:#040E1B;color:white;font-weight:bold;font-size:18px;padding:14px;border:none}'+
+  '.op-f{background:#0A1F38;color:#4A6A8A;font-size:10px;padding:4px 14px;border:none}'+
+  '.op-label{color:#6B6157;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em}'+
+  '.op-val{font-weight:bold;color:#040E1B}'+
+  '.iva{background:#FEF3C7;color:#B45309;font-weight:bold}'+
+  '.ivat{background:#047857;color:white;font-weight:bold;font-size:12px}'+
+  '</style></head><body><table>';
+}
+
+function xlsFoot(){return '</table></body></html>';}
+function td(v,cls){return '<td'+(cls?' class="'+cls+'"':'')+'>'+(v===null||v===undefined?'':String(v))+'</td>';}
+function tr(cells,cls){return '<tr'+(cls?' class="'+cls+'"':'')+'>'+cells.join('')+'</tr>';}
+function empty(n,cls){return '<tr><td'+(cls?' class="'+cls+'"':'')+' colspan="'+n+'"></td></tr>';}
+
 function exportAgency(campaign,tot,demo){
-  const X=window.XLSX;if(!X){alert("Librería no disponible");return null;}
-  const wb=X.utils.book_new();
-  const rows=[
-    ['MMX RADIO INTERIOR 2026 — PLANIFICACIÓN DE CAMPAÑA'],[''],
-    ['RESUMEN EJECUTIVO'],
-    ['Plazas',tot.n,'','Inversión total (ARS)',Math.round(tot.inv),'','CPM promedio',+tot.cpm.toFixed(2)],
-    ['Contactos únicos',tot.contacts,'','Total avisos/mes',tot.avisos,'','Benchmark AMBA CPM',B],[''],
-    demo?['PERFIL DEMOGRÁFICO DE LA CAMPAÑA']:[''],
-    demo?['NSE — ABC1+C2',demo.nse[0]+'%','C3',demo.nse[1]+'%','DE',demo.nse[2]+'%']:[''],
-    demo?['Edad — 18-29',demo.age[0]+'%','30-44',demo.age[1]+'%','45-60',demo.age[2]+'%','60+',demo.age[3]+'%']:[''],
-    [''],
-    ['DETALLE POR RADIO'],
-    ['Plaza','Provincia','Región','Medio','Ranking','Tipo','Perfil','NSE','Edad','Reach %','Audiencia est.','Salidas/día','Avisos/mes','C/Neto aviso (ARS)','Inversión neta/mes (ARS)'],
-  ];
-  Object.entries(campaign).forEach(([nm,sel])=>{
-    const p=PL.find(pl=>pl.n===nm);if(!p)return;
-    const pm=calc(p,sel);
-    const rg=getRegion(nm);
-    p.rs.filter(r=>sel.has(r.n)).forEach((r,i)=>{
-      rows.push([
-        i===0?nm:'',i===0?REGIONS[rg]?.provs?.find(pv=>pv.city.includes(nm)||pv.n===nm)?.n||rg:'',
-        i===0?rg:'',r.n,r.k,r.n.startsWith('AM')?'AM':'FM',r.pf,r.ns,r.ed,
-        (r.rch*100).toFixed(1)+'%',Math.round(p.p*r.rch),4,120,
-        Math.round(r.i/87),Math.round(r.i*D)
+  var NCOLS=12;
+  var h=xlsHead();
+
+  // Title
+  h+=tr([td('MMX RADIO INTERIOR 2026 — PLANIFICACIÓN DE CAMPAÑA','title')
+    .replace('</td>','</td>').replace('<td ','<td colspan="'+NCOLS+'" ')]);
+  h+=tr([td('Plan 4 salidas diarias · Top 5 medios por plaza · Tarifas con −20% negociado','subt')
+    .replace('<td ','<td colspan="'+NCOLS+'" ')]);
+  h+=empty(NCOLS);
+
+  // Summary
+  h+=tr(['<td colspan="'+NCOLS+'" class="sec">RESUMEN DE CAMPAÑA</td>']);
+  h+=tr([
+    td('Plazas','m'),td(tot.n,'n'),td(''),
+    td('Inversión total (ARS)','m'),td(Math.round(tot.inv),'n'),td(''),
+    td('Contactos únicos','m'),td(tot.contacts,'n'),td(''),
+    td('Total avisos/mes','m'),td(tot.avisos,'n'),td('')
+  ]);
+  h+=tr([
+    td('CPM campaña (ARS/persona)','m'),td(tot.cpm.toFixed(2),'n'),td(''),
+    td('Benchmark AMBA','m'),td(B,'n'),td(''),
+    td(''),td(''),td(''),td(''),td(''),td('')
+  ]);
+  h+=empty(NCOLS);
+
+  if(demo){
+    h+=tr(['<td colspan="'+NCOLS+'" class="sec">PERFIL DEMOGRÁFICO (target declarado por medios)</td>']);
+    h+=tr([td('NSE','m'),td('ABC1+C2','c'),td(demo.nse[0]+'%','n c'),
+           td('C3','c'),td(demo.nse[1]+'%','n'),td('D/E','c'),td(demo.nse[2]+'%','n'),
+           td(''),td(''),td(''),td(''),td('')]);
+    h+=tr([td('Edad','m'),td('18–29','c'),td(demo.age[0]+'%','n'),
+           td('30–44','c'),td(demo.age[1]+'%','n'),td('45–60','c'),td(demo.age[2]+'%','n'),
+           td('60+','c'),td(demo.age[3]+'%','n'),td(''),td(''),td('')]);
+    h+=empty(NCOLS);
+  }
+
+  // Radio detail
+  h+=tr(['<td colspan="'+NCOLS+'" class="sec">DETALLE POR RADIO</td>']);
+  h+=tr(['Plaza','Región','Medio','Rank.','Tipo','Perfil','NSE','Edad','Reach %','Inv. neta ARS/mes','Contactos plaza','CPM (ARS/p.)'].map(function(c){return td(c,'colh');}));
+
+  var ri=0;
+  Object.entries(campaign).forEach(function(kv){
+    var nm=kv[0],sel=kv[1];
+    var p=PL.find(function(pl){return pl.n===nm;});
+    if(!p)return;
+    var rg=getRegion(nm);
+    var pm=calc(p,sel);
+    p.rs.filter(function(r){return sel.has(r.n);}).forEach(function(r,i){
+      var rc=ri++%2===0?'r0':'r1';
+      var tipo=r.n.startsWith('AM')?'AM':'FM';
+      h+=tr([
+        td(i===0?nm:'',rc),td(i===0?rg:'',rc),
+        td(r.n,rc),td(r.k,'n '+rc),td(tipo,'c '+rc),
+        td(r.pf,rc),td(r.ns,rc),td(r.ed,rc),
+        td((r.rch*100).toFixed(1)+'%','n '+rc),
+        td(Math.round(r.i*D),'n '+rc),
+        td(i===0?pm.contacts:'','n '+rc),
+        td(i===0?pm.cpm.toFixed(2):'','n '+rc)
       ]);
     });
-    rows.push(['','','','SUBTOTAL — '+nm,'','','','','','','',
-      '',pm.avisos,'',Math.round(pm.inv)]);
-    rows.push(['']);
+    h+=tr([
+      '<td colspan="9" class="sub" style="text-align:right">Subtotal — '+nm+'</td>',
+      td(Math.round(pm.inv),'n sub'),td(pm.contacts,'n sub'),td(pm.cpm.toFixed(2),'n sub')
+    ]);
+    h+=empty(NCOLS);
   });
-  rows.push(['','','','TOTAL CAMPAÑA','','','','','','','',
-    '',tot.avisos,'',Math.round(tot.inv)]);
-  const ws=X.utils.aoa_to_sheet(sanRow(rows));
-  ws['!cols']=[{wch:20},{wch:14},{wch:12},{wch:28},{wch:8},{wch:5},{wch:12},{wch:12},{wch:10},{wch:10},{wch:14},{wch:12},{wch:12},{wch:18},{wch:20}];
-  X.utils.book_append_sheet(wb,'Planificación',ws);
-  return wb;
+
+  h+=tr([
+    '<td colspan="9" class="tot" style="text-align:right">TOTAL CAMPAÑA</td>',
+    td(Math.round(tot.inv),'n tot'),td(tot.contacts,'n tot'),td(tot.cpm.toFixed(2),'n tot')
+  ]);
+  h+=empty(NCOLS);
+  h+=tr(['<td colspan="'+NCOLS+'" class="op-f">Fuente tarifas: planes MMX Interior 2026 con descuento negociado del 20%. CPM = inversión / contactos únicos (ARS/persona). Benchmark AMBA: $7.79</td>']);
+
+  h+=xlsFoot();
+  dlXLS(h,'MMX_Planificacion_Radio_Interior_2026.xls');
 }
 
 function exportOP(campaign,tot,opData){
-  const X=window.XLSX;if(!X){alert("Librería no disponible");return null;}
-  const wb=X.utils.book_new();
-  const today=new Date().toLocaleDateString('es-AR');
-  const opNum='OP-'+Date.now().toString().slice(-6);
-  const rows=[
-    ['MMX RADIO INTERIOR 2026'],
-    ['ORDEN DE PUBLICIDAD','','','','','','Nro.:',opNum],
-    ['Fecha:',today,'','','','','',''],[''],
-    ['DATOS DEL ANUNCIANTE'],
-    ['Razón Social / Empresa:',opData.empresa||'___________________'],
-    ['CUIT:',opData.cuit||'___________________','','Teléfono:',opData.tel||'___________________'],
-    ['Contacto:',opData.contacto||'___________________','','E-mail:',opData.email||'___________________'],
-    ['Producto / Marca:',opData.producto||'___________________'],
-    ['Campaña:',opData.campana||'___________________','','Período:',opData.desde||'_______________','al',opData.hasta||'_______________'],
-    [''],
-    ['DETALLE DE PAUTA'],
-    ['Medio','Plaza','Provincia','Región','Prog./Daypart','Medida','Salidas/Día','Avisos/Mes','C/Bruto x Aviso (ARS)','Dto. %','C/Neto x Aviso (ARS)','Costo Neto Mes (ARS)'],
-  ];
-  let totAvisos=0,totBruto=0,totNeto=0;
-  Object.entries(campaign).forEach(([nm,sel])=>{
-    const p=PL.find(pl=>pl.n===nm);if(!p)return;
-    const rg=getRegion(nm);
-    const prov=REGIONS[rg]?.provs?.find(pv=>pv.city.includes(nm)||pv.n===nm)?.n||rg;
-    p.rs.filter(r=>sel.has(r.n)).forEach(r=>{
-      const bruto=Math.round(r.i/87);
-      const neto=Math.round(r.i*D/87);
-      totAvisos+=120;totBruto+=Math.round(r.i/D);totNeto+=Math.round(r.i*D);
-      rows.push([r.n,nm,prov,rg,'Rotativo 06:00–00:00','15s',4,120,bruto,20,neto,Math.round(r.i*D)]);
+  var NCOLS=12;
+  var today=new Date().toLocaleDateString('es-AR');
+  var opNum='OP-'+String(Date.now()).slice(-6);
+  var h=xlsHead();
+
+  // Header
+  h+=tr(['<td colspan="6" class="op-h">ORDEN DE PUBLICIDAD</td>',
+         '<td colspan="3" class="op-h" style="text-align:right;font-size:11px;vertical-align:bottom">Nro. '+opNum+'</td>',
+         '<td colspan="3" class="op-h" style="text-align:right;font-size:11px;vertical-align:bottom">Fecha: '+today+'</td>']);
+  h+=tr(['<td colspan="12" class="op-f">MMX Radio Interior Argentina · radio@mmx.com.ar</td>']);
+  h+=empty(NCOLS);
+
+  // Advertiser data
+  h+=tr(['<td colspan="'+NCOLS+'" class="sec">DATOS DEL ANUNCIANTE</td>']);
+  function fRow(l1,v1,l2,v2){
+    return tr([td(l1,'op-label'),td(v1||'________________________','op-val'),td(''),
+               td(l2,'op-label'),td(v2||'________________________','op-val'),
+               '<td colspan="7"></td>']);
+  }
+  h+=fRow('Razón Social / Empresa',opData.empresa,'CUIT',opData.cuit);
+  h+=fRow('Contacto',opData.contacto,'Teléfono',opData.tel);
+  h+=fRow('E-mail',opData.email,'Producto / Marca',opData.producto);
+  h+=fRow('Nombre de campaña',opData.campana,'Período',
+    (opData.desde?opData.desde+' al ':'')+(opData.hasta||''));
+  h+=empty(NCOLS);
+
+  // Pauta header
+  h+=tr(['<td colspan="'+NCOLS+'" class="sec">DETALLE DE PAUTA</td>']);
+  h+=tr(['Medio','Plaza','Provincia','Región','Daypart','Medida','Sal./Día','Avisos/Mes',
+         'C/Bruto Aviso (ARS)','Dto. %','C/Neto Aviso (ARS)','Costo Neto Mes (ARS)'].map(function(c){return td(c,'colh');}));
+
+  var totAvisos=0,totBruto=0,totNeto=0,ri=0;
+  Object.entries(campaign).forEach(function(kv){
+    var nm=kv[0],sel=kv[1];
+    var p=PL.find(function(pl){return pl.n===nm;});
+    if(!p)return;
+    var rg=getRegion(nm);
+    var prov=(REGIONS[rg]&&REGIONS[rg].provs&&REGIONS[rg].provs.find(function(pv){return pv.city.indexOf(nm)>=0||pv.n===nm;}))||{n:rg};
+    p.rs.filter(function(r){return sel.has(r.n);}).forEach(function(r){
+      var bruto=Math.round(r.i/87);
+      var neto=Math.round(r.i*D/87);
+      var mesNeto=Math.round(r.i*D);
+      totAvisos+=120;totBruto+=Math.round(r.i/D*D/D*87*bruto/87);totNeto+=mesNeto;
+      var rc=ri++%2===0?'r0':'r1';
+      h+=tr([td(r.n,rc),td(nm,rc),td(prov.n,rc),td(rg,'c '+rc),
+             td('Rotativo 06:00–00:00',rc),td('15"','c '+rc),
+             td(4,'n '+rc),td(120,'n '+rc),
+             td(bruto,'n '+rc),td('20%','c '+rc),td(neto,'n '+rc),td(mesNeto,'n '+rc)]);
     });
   });
-  const iva=Math.round(totNeto*0.21);
-  rows.push(['']);
-  rows.push(['TOTALES','','','','','','',totAvisos,'','',Math.round(totNeto/totAvisos),Math.round(totNeto)]);
-  rows.push(['IVA 21%','','','','','','','','','','',Math.round(iva)]);
-  rows.push(['TOTAL CON IVA','','','','','','','','','','',Math.round(totNeto+iva)]);
-  rows.push(['']);
-  rows.push(['Materiales:','Sin material — el anunciante provee el spot']);
-  rows.push(['Observaciones:',opData.obs||'']);
-  rows.push(['']);
-  rows.push(['Moneda: PESO ARGENTINO']);
-  rows.push(['Condiciones Generales: sujeto a disponibilidad de pauta. Tarifas con -20% de descuento sobre tarifa de lista.']);
-  const ws=X.utils.aoa_to_sheet(sanRow(rows));
-  ws['!cols']=[{wch:28},{wch:14},{wch:14},{wch:10},{wch:22},{wch:8},{wch:12},{wch:12},{wch:20},{wch:8},{wch:20},{wch:20}];
-  X.utils.book_append_sheet(wb,'Orden de Publicidad',ws);
-  return wb;
+
+  var iva=Math.round(totNeto*0.21);
+  h+=tr(['<td colspan="7" class="sub" style="text-align:right">TOTALES</td>',
+         td(totAvisos,'n sub'),td('','sub'),td('','sub'),
+         td(Math.round(totNeto/Math.max(totAvisos,1)),'n sub'),td(totNeto,'n sub')]);
+  h+=tr(['<td colspan="11" class="iva" style="text-align:right">IVA 21%</td>',
+         td(iva,'n iva')]);
+  h+=tr(['<td colspan="11" class="ivat" style="text-align:right">TOTAL CON IVA</td>',
+         td(Math.round(totNeto+iva),'n ivat')]);
+  h+=empty(NCOLS);
+
+  if(opData.obs){
+    h+=tr(['<td colspan="'+NCOLS+'" class="sec">OBSERVACIONES</td>']);
+    h+=tr(['<td colspan="'+NCOLS+'" style="padding:8px">'+opData.obs+'</td>']);
+    h+=empty(NCOLS);
+  }
+  h+=tr(['<td colspan="'+NCOLS+'" class="op-f">Materiales: Sin material — el anunciante provee el spot grabado.</td>']);
+  h+=tr(['<td colspan="'+NCOLS+'" class="op-f">Condiciones: Tarifas con −20% sobre tarifa de lista. Sujeto a disponibilidad de pauta. Moneda: Peso Argentino.</td>']);
+
+  h+=xlsFoot();
+  dlXLS(h,'MMX_Orden_de_Publicidad.xls');
 }
 
-function downloadWB(wb,name){
-  const X=window.XLSX;
-  if(!X){alert('La librería Excel no está disponible.\nRecargá la página con conexión a internet e intentá de nuevo.');return;}
-  try{
-    const b64=X.write(wb,{bookType:'xlsx',type:'base64'});
-    const link=document.createElement('a');
-    link.setAttribute('href','data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,'+b64);
-    link.setAttribute('download',name);
-    link.style.visibility='hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }catch(e){alert('Error al generar el archivo: '+e.message);}
-}
+
 
 // ── MAIN APP ────────────────────────────────────────────────────────────────
 function App(){
@@ -1239,11 +1327,11 @@ function App(){
                 </div>
 
                 <div className="export-section">
-                  <button className="btn-exp agency" onClick={()=>{try{const wb=exportAgency(campaign,tot,demo);if(wb)downloadWB(wb,'MMX_Planificacion_Interior_2026.xlsx');}catch(e){alert('Error: '+e.message);}}}>
-                    📊 Planificación detallada (Agencias)
+                  <button className="btn-exp agency" onClick={()=>{try{exportAgency(campaign,tot,demo);}catch(e){alert('Error al exportar: '+e.message);}}}>
+                    📊 Descargar planificación (.xls)
                   </button>
-                  <button className="btn-exp pyme" onClick={()=>{try{const wb=exportOP(campaign,tot,opData);if(wb)downloadWB(wb,'MMX_Orden_de_Publicidad.xlsx');}catch(e){alert('Error: '+e.message);}}}>
-                    📋 Orden de Publicidad (Pymes)
+                  <button className="btn-exp pyme" onClick={()=>{try{exportOP(campaign,tot,opData);}catch(e){alert('Error al exportar: '+e.message);}}}>
+                    📋 Descargar Orden de Publicidad (.xls)
                   </button>
                 </div>
               </div>
